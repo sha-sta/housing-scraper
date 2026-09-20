@@ -8,7 +8,7 @@ import { evaluate, wholeUnitRent } from "../match/evaluate.ts";
 import { reevaluateProfile } from "../match/reevaluate.ts";
 import type { Router } from "../match/routing.ts";
 import type { Notifier } from "../notify/notifier.ts";
-import { buildMatchPush, profileFeedUrl, type PushContext } from "../notify/push.ts";
+import { buildMatchPush, dashboardClick, listingClick, type PushContext } from "../notify/push.ts";
 import type { DraftService } from "../outreach/drafts.ts";
 import { findDuplicate, type DedupeCandidate } from "./dedupe.ts";
 import type { Geocoder } from "./geocode.ts";
@@ -109,7 +109,7 @@ export function createPipeline(options: PipelineOptions): Pipeline {
       listingId: listing.id,
       title: push.title,
       body: push.body,
-      click: push.click,
+      click: push.click ?? null,
       attach: push.attach ?? null,
       priority: push.priority,
       tags: push.tags,
@@ -143,7 +143,7 @@ export function createPipeline(options: PipelineOptions): Pipeline {
       listingId: listing.id,
       title,
       body,
-      click: `${context.dashboardUrl.replace(/\/+$/, "")}/listings/${listing.id}`,
+      click: listingClick(context, listing) ?? null,
       attach: listing.photos[0] ?? null,
       priority: 4,
       tags: [kind === "priceDrop" ? "chart_with_downwards_trend" : "recycle"],
@@ -162,7 +162,8 @@ export function createPipeline(options: PipelineOptions): Pipeline {
       listingId: null,
       title: "Baseline ready",
       body: `${count} current ${count === 1 ? "listing matches" : "listings match"} ${profile.name}. New ones will arrive as they appear.`,
-      click: profileFeedUrl(dashboardUrl, profile.id),
+      // A summary has no single listing to fall back to, so a local dashboard means no tap target.
+      click: dashboardClick(dashboardUrl, `/?profile=${profile.id}`) ?? null,
       priority: 3,
       tags: ["house"],
       alwaysSend: true,

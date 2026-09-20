@@ -13,6 +13,7 @@ import type {
   ListingQuery,
   ListingState,
   ListingView,
+  NetworkInfo,
   Notification,
   Profile,
   ProfilePreview,
@@ -28,6 +29,7 @@ import { api } from "./api.ts";
 export const keys = {
   stats: ["stats"] as const,
   campuses: ["campuses"] as const,
+  network: ["network"] as const,
   settings: ["settings"] as const,
   profiles: ["profiles"] as const,
   listings: ["listings"] as const,
@@ -48,6 +50,11 @@ export function useStats(): UseQueryResult<Stats> {
 
 export function useCampuses(): UseQueryResult<CampusPreset[]> {
   return useQuery({ queryKey: keys.campuses, queryFn: api.campuses, staleTime: Infinity });
+}
+
+/** Short lived: Tailscale can start after the server, and the card has a Check again button. */
+export function useNetwork(): UseQueryResult<NetworkInfo> {
+  return useQuery({ queryKey: keys.network, queryFn: api.network, staleTime: 15_000 });
 }
 
 export function useSettings(): UseQueryResult<Settings> {

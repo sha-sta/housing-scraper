@@ -3,6 +3,7 @@ import {
   CAMPUSES,
   DraftSchema,
   ListingViewSchema,
+  NetworkInfoSchema,
   NotificationSchema,
   PreferencesSchema,
   ProfileSchema,
@@ -15,6 +16,7 @@ import {
   type CampusPreset,
   type Draft,
   type ListingView,
+  type NetworkInfo,
   type Notification,
   type Profile,
   type Settings,
@@ -804,6 +806,19 @@ export function makeTemplates(): Template[] {
   ];
 }
 
+export function makeNetwork(overrides: Partial<NetworkInfo> = {}): NetworkInfo {
+  return NetworkInfoSchema.parse({
+    dashboardUrlIsLocal: true,
+    tailscale: { detected: false, listening: false, url: null },
+    ...overrides,
+  });
+}
+
+/** Tailscale is up and the server answers on it. */
+export const NETWORK_READY = makeNetwork({
+  tailscale: { detected: true, listening: true, url: "http://christians-mbp:4747" },
+});
+
 export interface FakeState {
   settings: Settings;
   profiles: Profile[];
@@ -812,11 +827,16 @@ export interface FakeState {
   sources: SourceStatus[];
   notifications: Notification[];
   templates: Template[];
+  network: NetworkInfo;
 }
 
-export function makeState(settingsOverrides: Partial<Settings> = {}): FakeState {
+export function makeState(
+  settingsOverrides: Partial<Settings> = {},
+  network: NetworkInfo = makeNetwork(),
+): FakeState {
   const profiles = makeProfiles();
   return {
+    network,
     settings: makeSettings(settingsOverrides),
     profiles,
     listings: makeListings(profiles),
@@ -951,6 +971,7 @@ export async function mockApi(page: Page, state: FakeState): Promise<FakeState> 
     if (path === "/health") return json({ ok: true, version: "0.1.0-test" });
     if (path === "/stats") return json(stats(state));
     if (path === "/campuses") return json(CAMPUSES);
+    if (path === "/network") return json(state.network);
     if (path === "/templates" && method === "GET") return json(state.templates);
 
     if (path === "/settings") {

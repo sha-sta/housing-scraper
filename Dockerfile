@@ -20,7 +20,8 @@ RUN pnpm --filter @housing/sources exec playwright install --with-deps chromium
 COPY . .
 RUN pnpm --filter @housing/web build
 
-ENV DATA_DIR=/data PORT=4747
+# Inside a container the app must listen on every interface for the port mapping to work
+ENV DATA_DIR=/data PORT=4747 HOST=0.0.0.0
 VOLUME /data
 EXPOSE 4747
 CMD ["pnpm", "start"]

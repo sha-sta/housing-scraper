@@ -5,6 +5,7 @@ import {
   defaultPreferences,
   ListingPageSchema,
   ListingViewSchema,
+  NetworkInfoSchema,
   ProfileSchema,
   SettingsSchema,
   SourceStatusSchema,
@@ -19,6 +20,7 @@ import { createApp } from "../src/api/app.ts";
 import { silentLogger } from "../src/log.ts";
 import { addProfile, createHarness, fakeAdapter, runOnce, type Harness } from "./harness.ts";
 import { HOMEWOOD, makeListing } from "./helpers.ts";
+import type { NetworkDetector } from "../src/network.ts";
 
 const JSON_HEADERS = new Headers({ "content-type": "application/json" });
 
@@ -43,7 +45,20 @@ let app: Hono;
 let webDir: string | null = null;
 let ranSources: string[] = [];
 
-function buildApp(options: { password?: string | null; webDistDir?: string | null } = {}): Hono {
+const NO_TAILSCALE: NetworkDetector = { address: () => null, name: async () => null };
+const WITH_TAILSCALE: NetworkDetector = {
+  address: () => "100.101.102.103",
+  name: async () => "macbook.tail1234.ts.net",
+};
+
+function buildApp(
+  options: {
+    password?: string | null;
+    webDistDir?: string | null;
+    detector?: NetworkDetector;
+    tailscaleListening?: boolean;
+  } = {},
+): Hono {
   return createApp({
     repos: harness.repos,
     bus: harness.bus,
@@ -59,6 +74,11 @@ function buildApp(options: { password?: string | null; webDistDir?: string | nul
     llmConfigured: false,
     ntfyCommandTopicConfigured: true,
     webDistDir: options.webDistDir ?? null,
+    network: {
+      detector: options.detector ?? NO_TAILSCALE,
+      port: 4747,
+      listening: () => options.tailscaleListening ?? false,
+    },
   });
 }
 
@@ -127,6 +147,41 @@ describe("campuses and stats", () => {
   it("reports stats in the documented shape", async () => {
     const res = await app.request("/api/stats");
     expect(StatsSchema.parse(await res.json()).activeListings).toBe(0);
+  });
+});
+
+describe("GET /api/network", () => {
+  it("reports a local dashboard and no Tailscale", async () => {
+    const res = await app.request("/api/network");
+    expect(res.status).toBe(200);
+    expect(NetworkInfoSchema.parse(await res.json())).toEqual({
+      dashboardUrlIsLocal: true,
+      tailscale: { detected: false, listening: false, url: null },
+    });
+  });
+
+  it("reports the Tailscale URL and a reachable dashboard once one is set", async () => {
+    await app.request("/api/settings", {
+      method: "PATCH",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ dashboardUrl: "http://macbook.tail1234.ts.net:4747" }),
+    });
+    const served = buildApp({ detector: WITH_TAILSCALE, tailscaleListening: true });
+    expect(NetworkInfoSchema.parse(await (await served.request("/api/network")).json())).toEqual({
+      dashboardUrlIsLocal: false,
+      tailscale: {
+        detected: true,
+        listening: true,
+        url: "http://macbook.tail1234.ts.net:4747",
+      },
+    });
+  });
+
+  it("reports Tailscale detected but not yet bound", async () => {
+    const served = buildApp({ detector: WITH_TAILSCALE, tailscaleListening: false });
+    const info = NetworkInfoSchema.parse(await (await served.request("/api/network")).json());
+    expect(info.tailscale.detected).toBe(true);
+    expect(info.tailscale.listening).toBe(false);
   });
 });
 

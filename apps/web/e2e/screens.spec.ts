@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { makeState, mockApi } from "./fixtures.ts";
+import { NETWORK_READY, makeState, mockApi } from "./fixtures.ts";
 
 const DIR = "test-results/screens";
 
@@ -68,6 +68,20 @@ test.describe("screens", () => {
     await page.getByTestId("wizard-next").click();
     await expect(page.getByTestId("qr-code")).toBeVisible();
     await shoot(page, "wizard-push", info.project.name);
+  });
+
+  test("open on your phone, ready", async ({ page }, info) => {
+    await mockApi(page, makeState({ dashboardUrl: "http://localhost:4747" }, NETWORK_READY));
+    await page.goto("/settings/ntfy");
+    await expect(page.getByTestId("phone-access-ready")).toBeVisible();
+    await shoot(page, "phone-access-ready", info.project.name);
+  });
+
+  test("open on your phone, setup", async ({ page }, info) => {
+    await mockApi(page, makeState({ dashboardUrl: "http://localhost:4747" }));
+    await page.goto("/settings/ntfy");
+    await expect(page.getByTestId("phone-access-setup")).toBeVisible();
+    await shoot(page, "phone-access-setup", info.project.name);
   });
 
   test("drafts queue", async ({ page }, info) => {

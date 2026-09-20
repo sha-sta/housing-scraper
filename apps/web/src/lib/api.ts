@@ -5,6 +5,7 @@ import {
   DraftSchema,
   ListingPageSchema,
   ListingViewSchema,
+  NetworkInfoSchema,
   NotificationSchema,
   ProfilePreviewSchema,
   ProfileSchema,
@@ -109,6 +110,7 @@ export const api = {
   health: () => json("/health", HealthSchema),
   stats: () => json("/stats", StatsSchema),
   campuses: () => json("/campuses", z.array(CampusPresetSchema)),
+  network: () => json("/network", NetworkInfoSchema),
 
   settings: () => json("/settings", SettingsSchema),
   patchSettings: (patch: Partial<Settings>) => json("/settings", SettingsSchema, "PATCH", patch),

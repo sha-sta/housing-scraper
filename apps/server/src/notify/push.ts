@@ -1,4 +1,5 @@
 import { composeUrl, type Draft, type Listing, type Match, type Profile } from "@housing/shared";
+import { isLocalUrl } from "../network.ts";
 import { signDraftId } from "./hmac.ts";
 import type { NtfyAction } from "./ntfy.ts";
 
@@ -25,6 +26,21 @@ function shorten(text: string, max: number): string {
 
 export function listingUrl(dashboardUrl: string, listingId: string): string {
   return `${dashboardUrl.replace(/\/+$/, "")}/listings/${listingId}`;
+}
+
+/**
+ * Where a push about one listing should tap through to. A localhost dashboard is the phone itself,
+ * so the source page is the only link that goes anywhere.
+ */
+export function listingClick(context: PushContext, listing: Listing): string | undefined {
+  if (!isLocalUrl(context.dashboardUrl)) return listingUrl(context.dashboardUrl, listing.id);
+  return listing.sources[0]?.url;
+}
+
+/** Summary, digest, and health pushes have no listing to fall back to. */
+export function dashboardClick(dashboardUrl: string, path: string): string | undefined {
+  if (isLocalUrl(dashboardUrl)) return undefined;
+  return `${dashboardUrl.replace(/\/+$/, "")}${path}`;
 }
 
 export function profileFeedUrl(dashboardUrl: string, profileId: string): string {
@@ -142,7 +158,7 @@ function outreachActions(draft: Draft, context: PushContext): NtfyAction[] {
 export interface MatchPush {
   title: string;
   body: string;
-  click: string;
+  click: string | undefined;
   attach: string | undefined;
   priority: number;
   tags: string[];
@@ -169,7 +185,7 @@ export function buildMatchPush(
   return {
     title: matchTitle(listing),
     body: matchBody(listing, match),
-    click: listingUrl(context.dashboardUrl, listing.id),
+    click: listingClick(context, listing),
     attach: listing.photos[0],
     priority: match.score >= profile.preferences.notify.urgentScore ? 5 : 4,
     tags: ["house"],

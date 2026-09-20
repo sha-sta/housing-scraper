@@ -58,6 +58,12 @@ The server publishes JSON to the ntfy server named in settings. Every match push
 
 The contact action depends on the draft. An email draft gets `view` Email landlord with a `mailto:` link that opens a prefilled message in the phone's mail app, so the email leaves from the user's own school address. When SMTP is configured, the email draft gets `http` Send email instead. A phone-only listing gets an `sms:` link. A form-only listing gets a link to the form.
 
+### Links that work on a phone
+
+A push is read on a phone, and `localhost` on a phone is the phone. When `dashboardUrl` is a localhost address, the push's tap target is the listing's own page on the source site, and summary pushes carry no tap target. When `dashboardUrl` is reachable (a Tailscale address or a public server), the tap target is the listing's dashboard page.
+
+The server listens on `127.0.0.1` by default. It also listens on the machine's Tailscale address (an address in 100.64.0.0/10) when one exists, and it rechecks every 30 seconds so that Tailscale starting after the server still works. It listens on every interface only when `HOST` says so, which the Docker image does. `GET /network` reports what the server found, and the Settings screen turns that into a QR code and one button that points `dashboardUrl` at the Tailscale address.
+
 ### Send button without inbound access
 
 A phone cannot reach a Mac behind NAT. The Send email and Mark contacted actions are `http` actions that POST to `<ntfyServer>/<NTFY_COMMAND_TOPIC>` with the body `send:<draftId>:<hmac>` or `sent:<draftId>:<hmac>`. The server holds an open subscription to that topic. It verifies the HMAC (SHA-256 of the draft id with `APP_SECRET`), checks that the draft is still `staged`, and sends it. The command topic name is a secret from `.env`. A leaked topic name lets an attacker do nothing without the HMAC, and a leaked HMAC lets an attacker send only the draft that the owner already staged.
@@ -95,6 +101,7 @@ JSON columns hold `photos`, `amenities`, `contact`, `scamSignals`, `priceHistory
 | Variable | Purpose |
 | --- | --- |
 | `PORT` | HTTP port, default 4747 |
+| `HOST` | Interface to listen on, default `127.0.0.1` plus the Tailscale address when present. The Docker image sets `0.0.0.0`. |
 | `DATA_DIR` | SQLite file and browser profiles, default `./data` |
 | `APP_SECRET` | HMAC key for Send actions. Generated into `.env` on first run when missing. |
 | `NTFY_COMMAND_TOPIC` | Secret topic the server listens on. Generated on first run when missing. |

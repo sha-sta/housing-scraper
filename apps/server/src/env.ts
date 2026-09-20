@@ -13,6 +13,8 @@ export interface SmtpConfig {
 export interface Env {
   repoRoot: string;
   port: number;
+  /** Interface to bind. Null means loopback plus the Tailscale address when one exists. */
+  host: string | null;
   dataDir: string;
   appSecret: string;
   ntfyCommandTopic: string;
@@ -113,6 +115,7 @@ export function loadEnv(): Env {
   return {
     repoRoot,
     port: readNumber("PORT", DEFAULT_PORT),
+    host: read("HOST"),
     dataDir,
     appSecret: read("APP_SECRET") ?? generateSecret(),
     ntfyCommandTopic: read("NTFY_COMMAND_TOPIC") ?? generateSecret(),

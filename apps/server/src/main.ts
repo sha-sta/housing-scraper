@@ -8,6 +8,7 @@ import { createRepos } from "./db/repo/index.ts";
 import { demoAdapters } from "./demo/source.ts";
 import { loadEnv } from "./env.ts";
 import { createLogger } from "./log.ts";
+import { createNetworkDetector } from "./network.ts";
 import { createRouter } from "./match/routing.ts";
 import { createCommandListener } from "./notify/commands.ts";
 import { createHealthNotifier } from "./notify/health.ts";
@@ -25,6 +26,9 @@ import { seed } from "./seed.ts";
 import { lazyBrowserPool, loadSources, unavailableBrowserPool, unavailableHttpClient } from "./sources.ts";
 
 const DIGEST_SWEEP_MS = 60_000;
+/** How often the server looks for a Tailscale address appearing or going away. */
+const TAILSCALE_POLL_MS = 30_000;
+const LOOPBACK = "127.0.0.1";
 const DEFAULT_NTFY_SERVER = "https://ntfy.sh";
 
 async function main(): Promise<void> {
@@ -112,6 +116,10 @@ async function main(): Promise<void> {
     log,
   });
 
+  const detector = createNetworkDetector();
+  let tailscaleServer: ReturnType<typeof serve> | null = null;
+  let tailscaleHost: string | null = null;
+
   const app = createApp({
     repos,
     bus,
@@ -125,11 +133,45 @@ async function main(): Promise<void> {
     llmConfigured: env.anthropicApiKey !== null,
     ntfyCommandTopicConfigured: env.ntfyCommandTopic !== "",
     webDistDir: join(env.repoRoot, "apps", "web", "dist"),
+    network: { detector, port: env.port, listening: () => tailscaleServer !== null },
   });
 
-  const server = serve({ fetch: app.fetch, port: env.port }, (info) => {
-    log.info("server listening", { port: info.port, demo: env.demo, sources: adapters.length });
+  // Binding loopback by default keeps the dashboard off the campus Wi-Fi. HOST overrides it, which
+  // is what the Docker image uses.
+  const server = serve({ fetch: app.fetch, port: env.port, hostname: env.host ?? LOOPBACK }, (info) => {
+    log.info("server listening", {
+      address: info.address,
+      port: info.port,
+      demo: env.demo,
+      sources: adapters.length,
+    });
   });
+
+  /**
+   * Tailscale can start after the server does, and it can stop while the server runs, so the second
+   * listener is opened and closed to follow it rather than decided once at boot.
+   */
+  function followTailscale(): void {
+    if (env.host !== null) return;
+    const address = detector.address();
+    if (address === tailscaleHost) return;
+
+    if (tailscaleServer !== null) {
+      tailscaleServer.close();
+      tailscaleServer = null;
+      log.info("stopped listening on the Tailscale address");
+    }
+    tailscaleHost = address;
+    if (address === null) return;
+
+    tailscaleServer = serve({ fetch: app.fetch, port: env.port, hostname: address }, (info) => {
+      log.info("also listening on the Tailscale address", { address: info.address, port: info.port });
+    });
+  }
+
+  followTailscale();
+  const tailscaleTimer = setInterval(followTailscale, TAILSCALE_POLL_MS);
+  tailscaleTimer.unref();
 
   const digestTimer = setInterval(() => {
     void notifier.releaseDue(new Date()).catch((error: unknown) => {
@@ -147,9 +189,11 @@ async function main(): Promise<void> {
     shuttingDown = true;
     log.info("shutting down", { signal });
     clearInterval(digestTimer);
+    clearInterval(tailscaleTimer);
     commands.stop();
     await scheduler.stop();
     await browser.close();
+    tailscaleServer?.close();
     server.close();
     handle.close();
     process.exit(0);

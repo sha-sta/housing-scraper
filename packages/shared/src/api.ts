@@ -195,6 +195,23 @@ export const SettingsPatchSchema = SettingsSchema.pick({
   dashboardUrl: true,
 }).partial();
 
+/**
+ * Response of GET /network. Tells the dashboard whether a phone can reach it.
+ * Tailscale is a private network between the user's own devices, so it works on campus Wi-Fi and on cellular.
+ */
+export const NetworkInfoSchema = z.object({
+  // True when settings.dashboardUrl points at localhost, which a phone cannot open
+  dashboardUrlIsLocal: z.boolean(),
+  tailscale: z.object({
+    detected: z.boolean(),
+    // True once the server is listening on the Tailscale address
+    listening: z.boolean(),
+    // http://<tailscale name or 100.x address>:<port>, or null when Tailscale is not running
+    url: z.string().nullable(),
+  }),
+});
+export type NetworkInfo = z.infer<typeof NetworkInfoSchema>;
+
 /** Response of POST /profiles/preview. */
 export const ProfilePreviewSchema = z.object({
   matched: z.number(),
@@ -237,6 +254,7 @@ export type Stats = z.infer<typeof StatsSchema>;
  * GET    /campuses                   -> CampusPreset[]
  * GET    /settings                   -> Settings
  * PATCH  /settings                   SettingsPatch -> Settings
+ * GET    /network                    -> NetworkInfo
  *
  * GET    /profiles                   -> Profile[]
  * POST   /profiles                   ProfileWrite -> Profile

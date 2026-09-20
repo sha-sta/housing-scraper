@@ -4,6 +4,7 @@ import type { ConfigRepo, NotifyRepo } from "../db/repo/index.ts";
 import { newId } from "../ids.ts";
 import type { Logger } from "../log.ts";
 import type { NtfyAction, NtfyClient } from "./ntfy.ts";
+import { dashboardClick } from "./push.ts";
 import { isQuiet } from "./quiet.ts";
 
 
@@ -157,7 +158,7 @@ export function createNotifier(options: NotifierOptions): Notifier {
 
     const settings = options.config.getSettings();
     const click =
-      settings === null ? null : `${settings.dashboardUrl.replace(/\/+$/, "")}/?profile=${profile.id}`;
+      settings === null ? null : (dashboardClick(settings.dashboardUrl, `/?profile=${profile.id}`) ?? null);
 
     await deliver({
       kind: "digest",

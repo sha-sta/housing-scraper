@@ -13,6 +13,7 @@ import {
   TemplateWriteSchema,
   type Draft,
   type ListingView,
+  type NetworkInfo,
   type Profile,
   type Settings,
   type SourceStatus,
@@ -31,6 +32,7 @@ import type { Notifier } from "../notify/notifier.ts";
 import type { DraftService } from "../outreach/drafts.ts";
 import type { Mailer } from "../outreach/mailer.ts";
 import type { Pipeline } from "../pipeline/run.ts";
+import { isLocalUrl, tailscaleUrl, type NetworkDetector } from "../network.ts";
 import type { EventBus } from "./events.ts";
 
 const VERSION = "0.1.0";
@@ -52,6 +54,14 @@ export interface AppDeps {
   llmConfigured: boolean;
   ntfyCommandTopicConfigured: boolean;
   webDistDir: string | null;
+  network: NetworkStatus;
+}
+
+export interface NetworkStatus {
+  detector: NetworkDetector;
+  port: number;
+  /** True once the server holds a second listener on the Tailscale address. */
+  listening(): boolean;
 }
 
 function toSettings(deps: AppDeps): Settings | null {
@@ -141,6 +151,20 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   api.get("/campuses", (c) => c.json(CAMPUSES));
+
+  api.get("/network", async (c) => {
+    const settings = repos.config.getSettings();
+    const url = await tailscaleUrl(deps.network.detector, deps.network.port);
+    const info: NetworkInfo = {
+      dashboardUrlIsLocal: settings === null ? true : isLocalUrl(settings.dashboardUrl),
+      tailscale: {
+        detected: deps.network.detector.address() !== null,
+        listening: deps.network.listening(),
+        url,
+      },
+    };
+    return c.json(info);
+  });
 
   api.get("/settings", (c) => {
     const settings = toSettings(deps);

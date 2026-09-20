@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { Profile } from "@housing/shared";
+import { PhoneAccess } from "../../components/PhoneAccess.tsx";
 import { QrCode } from "../../components/QrCode.tsx";
 import { Chip, Empty, Labeled, PageHeader, Section, Spinner } from "../../components/ui.tsx";
 import { api } from "../../lib/api.ts";
@@ -173,6 +174,8 @@ export function Ntfy() {
         title="Phone pushes"
         hint="ntfy sends a push to your phone the second a listing matches. Install the ntfy app, scan a code, done."
       />
+
+      <PhoneAccess />
 
       <Section title="Server">
         <Labeled label="ntfy server" hint="ntfy.sh works out of the box. Point it at your own if you run one.">

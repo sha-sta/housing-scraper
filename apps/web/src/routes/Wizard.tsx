@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   PROPERTY_TYPES,
   defaultPreferences,
@@ -565,6 +565,14 @@ export function Wizard() {
               </li>
               <li className="rounded-[8px] border border-rule px-3 py-2.5">
                 Settings has the full editor if you want to tune the score.
+              </li>
+              <li className="rounded-[8px] border border-rule px-3 py-2.5">
+                Your pushes and their links already work on your phone. To open the whole
+                dashboard there too, see{" "}
+                <Link to="/settings/ntfy" className="med text-moss underline">
+                  Open on your phone
+                </Link>{" "}
+                under Phone pushes.
               </li>
             </ul>
           </section>

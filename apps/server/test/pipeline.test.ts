@@ -325,7 +325,9 @@ describe("the first run of a source", () => {
     const summary = harness.published[0]!;
     expect(summary.title).toBe("Baseline ready");
     expect(summary.message).toBe("12 current listings match Row home for 6. New ones will arrive as they appear.");
-    expect(summary.click).toBe(`http://localhost:4747/?profile=${profile.id}`);
+    // The harness dashboard is localhost, and a summary has no listing to fall back to.
+    expect(summary.click).toBeUndefined();
+    expect(profile.id).not.toBe("");
 
     // Exactly one notification row, not twelve.
     expect(harness.repos.notify.list(false, 50)).toHaveLength(1);
