@@ -1,0 +1,385 @@
+@import "tailwindcss";
+
+/*
+  Palette "Stoop": Baltimore rowhome materials. Limestone ground, chalk surfaces,
+  evergreen for the app's own voice, brick reserved for danger. Dark mode is wet slate.
+  Every colour that changes between schemes is a plain variable so utilities can stay
+  scheme-agnostic; @theme inline below points Tailwind at the variables, not the values.
+*/
+@layer base {
+  :root {
+    --ground: #edeee9;
+    --surface: #ffffff;
+    --surface-2: #f4f6f1;
+    --surface-3: #e7e9e2;
+    --ink: #141a19;
+    --ink-2: #5b6663;
+    --ink-3: #8a938f;
+    --rule: #dcdfd8;
+    --rule-strong: #c1c7bd;
+    --moss: #1e4d3f;
+    --moss-ink: #f2f7f4;
+    --moss-soft: #e2efe8;
+    --brick: #a83a26;
+    --brick-soft: #f8e8e3;
+    --shade: rgb(20 26 25 / 0.45);
+
+    --band-0-bg: #eceee8;
+    --band-0-fg: #77817d;
+    --band-1-bg: #dae5dc;
+    --band-1-fg: #3a4a43;
+    --band-2-bg: #a8cbb9;
+    --band-2-fg: #133129;
+    --band-3-bg: #1e4d3f;
+    --band-3-fg: #f2f7f4;
+
+    --stage-new: #1e4d3f;
+    --stage-interested: #3a6ba6;
+    --stage-contacted: #86681d;
+    --stage-replied: #6555a4;
+    --stage-touring: #15726b;
+    --stage-applied: #a35a26;
+    --stage-signed: #2c7a3c;
+    --stage-passed: #7c8783;
+
+    --map-filter: none;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #101617;
+      --surface: #171f20;
+      --surface-2: #1e2728;
+      --surface-3: #263031;
+      --ink: #e7ede9;
+      --ink-2: #99a7a2;
+      --ink-3: #6e7c78;
+      --rule: #26312f;
+      --rule-strong: #384542;
+      --moss: #63c6a4;
+      --moss-ink: #08120f;
+      --moss-soft: #14312a;
+      --brick: #ec8971;
+      --brick-soft: #3a1e19;
+      --shade: rgb(4 8 8 / 0.62);
+
+      --band-0-bg: #1d2626;
+      --band-0-fg: #93a29d;
+      --band-1-bg: #22322c;
+      --band-1-fg: #a6bcb1;
+      --band-2-bg: #2e5b4a;
+      --band-2-fg: #d3ece0;
+      --band-3-bg: #63c6a4;
+      --band-3-fg: #08120f;
+
+      --stage-new: #63c6a4;
+      --stage-interested: #7fabe4;
+      --stage-contacted: #cfae52;
+      --stage-replied: #a698e0;
+      --stage-touring: #4cb6ac;
+      --stage-applied: #e09a63;
+      --stage-signed: #6cc47c;
+      --stage-passed: #8b9793;
+
+      --map-filter: invert(1) hue-rotate(180deg) brightness(0.86) contrast(0.92) saturate(0.6);
+    }
+  }
+}
+
+@theme inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-moss: var(--moss);
+  --color-moss-ink: var(--moss-ink);
+  --color-moss-soft: var(--moss-soft);
+  --color-brick: var(--brick);
+  --color-brick-soft: var(--brick-soft);
+  --color-shade: var(--shade);
+
+  --font-sans: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --radius-ctl: 7px;
+  --radius-photo: 3px;
+}
+
+@layer base {
+  html {
+    color-scheme: light dark;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-variation-settings: "wdth" 100, "wght" 420;
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--moss);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    font-variation-settings: inherit;
+    color: inherit;
+  }
+
+  /* Numbers read as data: same width in every row so columns line up while scrolling. */
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The score plate and prices borrow the condensed axis, like a house number. */
+  .cond {
+    font-variation-settings: "wdth" 76, "wght" 700;
+    letter-spacing: 0.005em;
+  }
+
+  .cond-med {
+    font-variation-settings: "wdth" 84, "wght" 600;
+  }
+
+  /* Section and nav headings take the wide axis so hierarchy comes from shape, not size. */
+  .wide {
+    font-variation-settings: "wdth" 112, "wght" 600;
+    letter-spacing: 0.012em;
+  }
+
+  .semi {
+    font-variation-settings: "wdth" 100, "wght" 600;
+  }
+
+  .med {
+    font-variation-settings: "wdth" 100, "wght" 520;
+  }
+}
+
+@layer components {
+  /* Rows butt against each other separated by a rule, the way rowhomes share a wall. */
+  .row-stack > * + * {
+    border-top: 1px solid var(--rule);
+  }
+
+  .ctl {
+    min-height: 44px;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-ctl);
+    background: var(--surface);
+    padding: 0 12px;
+  }
+
+  .ctl:hover:not(:disabled) {
+    border-color: var(--ink-3);
+  }
+
+  .ctl:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .ctl-primary {
+    min-height: 44px;
+    border-radius: var(--radius-ctl);
+    background: var(--moss);
+    color: var(--moss-ink);
+    border: 1px solid transparent;
+    padding: 0 16px;
+  }
+
+  .ctl-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .field {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-ctl);
+    background: var(--surface);
+    padding: 8px 12px;
+  }
+
+  .field:focus {
+    border-color: var(--moss);
+  }
+
+  textarea.field {
+    min-height: 96px;
+    line-height: 1.5;
+  }
+
+  select.field {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%),
+      linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+    background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 32px;
+  }
+
+  /* The track stays thin; the tall box is the part a thumb can actually hit. */
+  input[type="range"] {
+    accent-color: var(--moss);
+    height: 44px;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--moss);
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@layer utilities {
+  .tap {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .hairline-t {
+    border-top: 1px solid var(--rule);
+  }
+
+  .hairline-b {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  /* One orchestrated moment: a row that just arrived over SSE. */
+  @keyframes arrive {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes settle {
+    0% {
+      background-color: var(--moss-soft);
+    }
+    100% {
+      background-color: var(--surface);
+    }
+  }
+
+  .arrived {
+    animation: arrive 260ms cubic-bezier(0.2, 0.7, 0.3, 1), settle 2.4s ease-out 260ms;
+  }
+
+  @keyframes pulse-live {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  .live-dot {
+    animation: pulse-live 2.2s ease-in-out infinite;
+  }
+
+  @keyframes slide-up {
+    from {
+      transform: translateY(14px);
+      opacity: 0;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-in {
+    from {
+      transform: translateX(22px);
+      opacity: 0;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  .enter-up {
+    animation: slide-up 200ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+
+  .enter-side {
+    animation: slide-in 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .arrived,
+    .live-dot,
+    .enter-up,
+    .enter-side {
+      animation: none;
+    }
+  }
+
+  /*
+    relative matters: a screen-reader-only span is position:absolute, so without a
+    positioned ancestor it resolves against the page and drags the whole document
+    sideways instead of staying inside the scroller.
+  */
+  .scroll-x {
+    position: relative;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .scroll-x::-webkit-scrollbar {
+    display: none;
+  }
+
+  .safe-b {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Leaflet keeps its own light chrome; the tile filter carries it into dark mode. */
+.leaflet-container {
+  background: var(--surface-2);
+  font-family: var(--font-sans);
+}
+
+.leaflet-tile-pane {
+  filter: var(--map-filter);
+}
+
+.leaflet-bar a,
+.leaflet-control-attribution {
+  background: var(--surface);
+  color: var(--ink-2);
+  border-color: var(--rule);
+}
+
+.leaflet-bar a {
+  color: var(--ink);
+}
