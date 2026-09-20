@@ -1,0 +1,388 @@
+{
+ "homes": [
+  {
+   "homeData": {
+    "propertyId": "10826096",
+    "url": "/MD/Baltimore/3913-Ednor-Rd-21218/home/10826096",
+    "propertyType": 13,
+    "photosInfo": {
+     "photoRanges": [
+      {
+       "startPos": 0,
+       "endPos": 10,
+       "version": "1"
+      }
+     ]
+    },
+    "staticMapUrl": "https://maps.google.com/maps/api/staticmap?sensor=false&style=feature%3Aadministrative.land_parcel%7Cvisibility%3Aoff&style=feature%3Alandscape.man_made%7Cvisibility%3Aoff&style=feature%3Atransit.station%7Chue%3A0xffa200&center=39.3355235%2C-76.5990292&channel=seekers-search_map&size=200x200&format=jpg&scale=1&zoom=11&key=AIzaSyA_29QNQgZnWV-qXu1LyNzrLuiHCDGCJGU&signature=eeleQSFniTihuSZ-no7OZpwbhUg=",
+    "hasAttFiber": false,
+    "addressInfo": {
+     "centroid": {
+      "centroid": {
+       "latitude": 39.3355235,
+       "longitude": -76.5990292
+      }
+     },
+     "formattedStreetLine": "3913 Ednor Rd",
+     "city": "Baltimore",
+     "state": "MD",
+     "zip": "21218",
+     "streetlineDisplayLevel": 1,
+     "unitNumberDisplayLevel": 1,
+     "locationDisplayLevel": 1,
+     "countryCode": 1,
+     "postalCodeDisplayLevel": 1
+    }
+   },
+   "rentalExtension": {
+    "rentalId": "122a8149-d440-47e6-8a14-74fa3e480dcc",
+    "bedRange": {
+     "min": 4,
+     "max": 4
+    },
+    "bathRange": {
+     "min": 2.0,
+     "max": 2.0
+    },
+    "sqftRange": {
+     "min": 1760,
+     "max": 1760
+    },
+    "rentPriceRange": {
+     "min": 600,
+     "max": 600
+    },
+    "lastUpdated": "2026-08-26T23:45:14.752398Z",
+    "numAvailableUnits": 1,
+    "status": 1,
+    "rentalDetailsPageType": 6,
+    "searchRankScore": 1.0,
+    "freshnessTimestamp": "2026-07-08T17:56:02.365Z",
+    "description": "Quiet Neighborhood, $600-750 Utilities Included, Month-to-Month Lease\n\nINDIVIDUAL ROOMS available in a 4 bedroom, 3 bath, 2000 sq ft. home in Baltimore city (21218). The house is located in a...",
+    "feedSourceInternalId": "rf-diy-145804",
+    "isCommercialPaid": false,
+    "feedOriginalSource": "REDFIN",
+    "mlsAgentEmail": "leasing@example.com",
+    "desktopPhone": "5555550100",
+    "mobileWebPhone": "5555550100",
+    "mobileAppPhone": "5555550100",
+    "feedSource": "REDFIN_DIY",
+    "leadRequiresMoveInDate": true,
+    "isTotalPrice": false,
+    "isInTotalPriceState": false,
+    "isIncomeRestricted": false,
+    "isSeniorLiving": false,
+    "isStudent": false,
+    "isMilitary": false
+   }
+  },
+  {
+   "homeData": {
+    "propertyId": "10829393",
+    "url": "/MD/Baltimore/1200-N-Eden-St-21213/home/10829393",
+    "propertyType": 2,
+    "photosInfo": {
+     "photoRanges": [
+      {
+       "startPos": 3,
+       "endPos": 4,
+       "version": "1"
+      }
+     ]
+    },
+    "staticMapUrl": "https://maps.google.com/maps/api/staticmap?sensor=false&style=feature%3Aadministrative.land_parcel%7Cvisibility%3Aoff&style=feature%3Alandscape.man_made%7Cvisibility%3Aoff&style=feature%3Atransit.station%7Chue%3A0xffa200&center=39.3041933%2C-76.5997725&channel=seekers-search_map&size=200x200&format=jpg&scale=1&zoom=11&key=AIzaSyA_29QNQgZnWV-qXu1LyNzrLuiHCDGCJGU&signature=qSkcvP0bo-GDhmrQ0NO4d1Qo_K8=",
+    "hasAttFiber": false,
+    "addressInfo": {
+     "centroid": {
+      "centroid": {
+       "latitude": 39.3041933,
+       "longitude": -76.5997725
+      }
+     },
+     "formattedStreetLine": "1200 N Eden St",
+     "city": "Baltimore",
+     "state": "MD",
+     "zip": "21213",
+     "streetlineDisplayLevel": 1,
+     "unitNumberDisplayLevel": 1,
+     "locationDisplayLevel": 1,
+     "countryCode": 1,
+     "postalCodeDisplayLevel": 1
+    }
+   },
+   "rentalExtension": {
+    "rentalId": "1b98473b-3a64-4528-a165-16ce141df055",
+    "bedRange": {
+     "min": 5,
+     "max": 5
+    },
+    "bathRange": {
+     "min": 4.5,
+     "max": 4.5
+    },
+    "sqftRange": {
+     "min": 1208,
+     "max": 1208
+    },
+    "rentPriceRange": {
+     "min": 1400,
+     "max": 1400
+    },
+    "lastUpdated": "2026-08-26T18:38:22.314535Z",
+    "numAvailableUnits": 1,
+    "status": 1,
+    "rentalDetailsPageType": 6,
+    "searchRankScore": 2.0,
+    "freshnessTimestamp": "2026-06-13T01:30:26.573Z",
+    "description": "1200 North Eden Street has 2 separate apartment unit with 2 bedroom and 2 full bathroom. homes . Spacious home with new granite counter-tops or stainless steel appliances. Newly renovated with all...",
+    "feedSourceInternalId": "rf-diy-141561",
+    "isCommercialPaid": false,
+    "feedOriginalSource": "REDFIN",
+    "mlsAgentEmail": "leasing@example.com",
+    "desktopPhone": "5555550100",
+    "mobileWebPhone": "5555550100",
+    "mobileAppPhone": "5555550100",
+    "feedSource": "REDFIN_DIY",
+    "leadRequiresMoveInDate": true,
+    "isTotalPrice": false,
+    "isInTotalPriceState": false,
+    "isIncomeRestricted": false,
+    "isSeniorLiving": false,
+    "isStudent": false,
+    "isMilitary": false
+   }
+  },
+  {
+   "homeData": {
+    "propertyId": "10845679",
+    "url": "/MD/Baltimore/445-E-22nd-St-21218/home/10845679",
+    "propertyType": 13,
+    "photosInfo": {
+     "photoRanges": [
+      {
+       "startPos": 0,
+       "endPos": 26,
+       "version": "1"
+      }
+     ]
+    },
+    "staticMapUrl": "https://maps.google.com/maps/api/staticmap?sensor=false&style=feature%3Aadministrative.land_parcel%7Cvisibility%3Aoff&style=feature%3Alandscape.man_made%7Cvisibility%3Aoff&style=feature%3Atransit.station%7Chue%3A0xffa200&center=39.3143216%2C-76.6098162&channel=seekers-search_map&size=200x200&format=jpg&scale=1&zoom=11&key=AIzaSyA_29QNQgZnWV-qXu1LyNzrLuiHCDGCJGU&signature=kCBrrOxVAIig8-D4FUiLABNprkk=",
+    "hasAttFiber": false,
+    "addressInfo": {
+     "centroid": {
+      "centroid": {
+       "latitude": 39.3143216,
+       "longitude": -76.6098162
+      }
+     },
+     "formattedStreetLine": "445 E 22nd St",
+     "city": "Baltimore",
+     "state": "MD",
+     "zip": "21218",
+     "streetlineDisplayLevel": 1,
+     "unitNumberDisplayLevel": 1,
+     "locationDisplayLevel": 1,
+     "countryCode": 1,
+     "postalCodeDisplayLevel": 1
+    }
+   },
+   "rentalExtension": {
+    "rentalId": "a7b53c6d-4c9a-44b7-8fd7-fec6c445fbc3",
+    "bedRange": {
+     "min": 6,
+     "max": 6
+    },
+    "bathRange": {
+     "min": 4.5,
+     "max": 4.5
+    },
+    "sqftRange": {
+     "min": 3100,
+     "max": 3100
+    },
+    "rentPriceRange": {
+     "min": 3900,
+     "max": 3900
+    },
+    "lastUpdated": "2026-08-26T21:57:17.240575Z",
+    "numAvailableUnits": 1,
+    "status": 1,
+    "rentalDetailsPageType": 6,
+    "searchRankScore": 3.0,
+    "freshnessTimestamp": "2025-11-28T19:37:11.254Z",
+    "description": "Welcome to 445 E 22nd St \u2014 a home where comfort meets style and community.\nThis beautifully renovated residence offers the perfect blend of modern elegance and everyday convenience, designed for...",
+    "feedSourceInternalId": "rf-diy-112164",
+    "isCommercialPaid": false,
+    "feedOriginalSource": "REDFIN",
+    "mlsAgentEmail": "leasing@example.com",
+    "desktopPhone": "5555550100",
+    "mobileWebPhone": "5555550100",
+    "mobileAppPhone": "5555550100",
+    "feedSource": "REDFIN_DIY",
+    "leadRequiresMoveInDate": true,
+    "isTotalPrice": false,
+    "isInTotalPriceState": false,
+    "isIncomeRestricted": false,
+    "isSeniorLiving": false,
+    "isStudent": false,
+    "isMilitary": false
+   }
+  },
+  {
+   "homeData": {
+    "propertyId": "10858110",
+    "url": "/MD/Baltimore/The-Carlyle-Apartment-Homes/apartment/10858110",
+    "propertyType": 5,
+    "photosInfo": {
+     "photoRanges": [
+      {
+       "startPos": 0,
+       "endPos": 0,
+       "version": "7"
+      },
+      {
+       "startPos": 1,
+       "endPos": 1,
+       "version": "5"
+      }
+     ]
+    },
+    "hasAttFiber": false,
+    "addressInfo": {
+     "centroid": {
+      "centroid": {
+       "latitude": 39.337304,
+       "longitude": -76.62439
+      }
+     },
+     "formattedStreetLine": "500 W University Pkwy",
+     "city": "Baltimore",
+     "state": "MD",
+     "zip": "21210",
+     "streetlineDisplayLevel": 1,
+     "unitNumberDisplayLevel": 1,
+     "locationDisplayLevel": 1,
+     "countryCode": 1,
+     "postalCodeDisplayLevel": 1
+    }
+   },
+   "rentalExtension": {
+    "rentalId": "45f6c0d3-7394-4a33-a483-51592b510a6f",
+    "bedRange": {
+     "min": 0,
+     "max": 3
+    },
+    "bathRange": {
+     "min": 1.0,
+     "max": 2.0
+    },
+    "sqftRange": {
+     "min": 340,
+     "max": 1571
+    },
+    "rentPriceRange": {
+     "min": 1600,
+     "max": 3545
+    },
+    "lastUpdated": "2026-09-20T02:37:15.676624Z",
+    "numAvailableUnits": 16,
+    "status": 1,
+    "propertyName": "The Carlyle Apartment Homes",
+    "rentalDetailsPageType": 6,
+    "searchRankScore": 1.0,
+    "freshnessTimestamp": "2026-08-23T00:28:48.599Z",
+    "description": "Come see our awesome new look at The Carlyle Apartments, where you will have it all from the convenience of having your own personal washer & dryer to the fabulous Roland Park location, one of...",
+    "revenuePerLead": 11.0,
+    "feedSourceInternalId": "lc5964535",
+    "isCommercialPaid": true,
+    "feedOriginalSource": "ZILLOW",
+    "mlsAgentEmail": "leasing@example.com",
+    "desktopPhone": "5555550100",
+    "mobileWebPhone": "5555550100",
+    "mobileAppPhone": "5555550100",
+    "feedSource": "RentPath",
+    "feedExternalId": "nwghgpau9hb8",
+    "leadRequiresMoveInDate": true,
+    "paidPhone": "5555550100",
+    "isTotalPrice": false,
+    "isInTotalPriceState": false,
+    "isIncomeRestricted": false,
+    "isSeniorLiving": false,
+    "isStudent": false,
+    "isMilitary": false
+   }
+  },
+  {
+   "homeData": {
+    "propertyId": "177404128",
+    "url": "/MD/Baltimore/Penn-Square-I/apartment/177404128",
+    "propertyType": 5,
+    "hasAttFiber": false,
+    "addressInfo": {
+     "centroid": {
+      "centroid": {
+       "latitude": 39.3118806,
+       "longitude": -76.644893
+      }
+     },
+     "formattedStreetLine": "2636 Pennsylvania Ave",
+     "city": "Baltimore",
+     "state": "MD",
+     "zip": "21217",
+     "streetlineDisplayLevel": 1,
+     "unitNumberDisplayLevel": 1,
+     "locationDisplayLevel": 1,
+     "countryCode": 1,
+     "postalCodeDisplayLevel": 1
+    }
+   },
+   "rentalExtension": {
+    "rentalId": "8bf95043-add0-4685-8f54-6e90c14d3741",
+    "bedRange": {
+     "min": 1,
+     "max": 2
+    },
+    "bathRange": {
+     "min": 1.0,
+     "max": 1.0
+    },
+    "sqftRange": {
+     "min": 733,
+     "max": 960
+    },
+    "rentPriceRange": {
+     "min": 600,
+     "max": 956
+    },
+    "lastUpdated": "2026-09-19T11:43:48.180377Z",
+    "numAvailableUnits": 7,
+    "status": 1,
+    "propertyName": "Penn Square I",
+    "rentalDetailsPageType": 6,
+    "searchRankScore": 62.0,
+    "freshnessTimestamp": "2026-07-29T00:37:23.361Z",
+    "description": "Welcome home to Penn Square I!  Welcome to Penn Square I, a charming rental community nestled in the heart of Baltimore, MD. Our affordable apartments offer a range of floor plans, including one,...",
+    "revenuePerLead": 0.0,
+    "feedSourceInternalId": "lc6755988",
+    "isCommercialPaid": true,
+    "feedOriginalSource": "ZILLOW",
+    "mlsAgentEmail": "leasing@example.com",
+    "desktopPhone": "5555550100",
+    "mobileWebPhone": "5555550100",
+    "mobileAppPhone": "5555550100",
+    "feedSource": "RentPath",
+    "feedExternalId": "380293a9bv0nx",
+    "leadRequiresMoveInDate": true,
+    "paidPhone": "5555550100",
+    "isTotalPrice": false,
+    "isInTotalPriceState": false,
+    "isIncomeRestricted": true,
+    "isSeniorLiving": false,
+    "isStudent": false,
+    "isMilitary": false
+   }
+  }
+ ],
+ "numMatchedHomes": 5,
+ "numMatchedUnits": 44
+}

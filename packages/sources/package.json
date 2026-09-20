@@ -1,0 +1,29 @@
+{
+  "name": "@housing/sources",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "smoke": "node --experimental-strip-types src/smoke.ts",
+    "fb:login": "node --experimental-strip-types src/fb-login.ts",
+    "fb:groups": "node --experimental-strip-types src/fb-groups.ts"
+  },
+  "dependencies": {
+    "@housing/shared": "workspace:*",
+    "cheerio": "^1.2.0",
+    "zod": "^4.6.5",
+    "playwright": "^1.63.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}
