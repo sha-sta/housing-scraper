@@ -3,7 +3,8 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/sha-sta/housing-scraper/main/scripts/install.sh | sh
 #
-# It needs no admin password and no other tools. It downloads its own copy of Node into
+# It needs no admin password. On a fresh Mac it first asks macOS to install Apple's developer
+# tools, which the database driver needs. It downloads its own copy of Node into
 # ~/.housing-scraper, puts the app in ~/housing-scraper, starts it as a background service,
 # and opens the setup page. Your listings and settings live in ~/housing-scraper/data and
 # survive an update.
@@ -16,6 +17,15 @@ TARBALL_URL="${HOUSING_TARBALL_URL:-https://github.com/sha-sta/housing-scraper/a
 PORT="${PORT:-4747}"
 
 say() { printf '\n==> %s\n' "$1"; }
+# Downloads to a file first. In "curl | tar" a failed download goes unnoticed, because the
+# shell only looks at the exit status of tar.
+fetch_and_unpack() {
+  archive="$(mktemp)"
+  curl -fsSL "$1" -o "$archive" || { rm -f "$archive"; fail "could not download $1"; }
+  shift
+  tar -xzf "$archive" "$@" || { rm -f "$archive"; fail "could not unpack the download"; }
+  rm -f "$archive"
+}
 fail() { printf '\nInstall stopped: %s\n' "$1" >&2; exit 1; }
 
 [ "$(uname -s)" = "Darwin" ] || fail "this installer supports macOS. On Linux, follow the Docker steps in the README."
@@ -26,11 +36,26 @@ case "$(uname -m)" in
   *) fail "unsupported processor $(uname -m)" ;;
 esac
 
+# The database driver compiles during install, which needs Apple's Command Line Tools.
+# A fresh Mac does not have them. macOS installs them through its own window.
+if ! xcode-select -p >/dev/null 2>&1; then
+  say "Your Mac needs Apple's developer tools first"
+  xcode-select --install >/dev/null 2>&1 || true
+  printf 'A window just opened. Click Install, then Agree. The download takes about 10 minutes.\n'
+  printf 'Leave this window open. The install continues by itself when the tools are ready.\n'
+  waited=0
+  until xcode-select -p >/dev/null 2>&1; do
+    sleep 10
+    waited=$((waited + 10))
+    [ "$waited" -lt 2400 ] || fail "the developer tools did not finish installing. Finish that install, then paste the line again."
+  done
+fi
+
 NODE_HOME="$RUNTIME_DIR/node-$NODE_VERSION-darwin-$NODE_ARCH"
 if [ ! -x "$NODE_HOME/bin/node" ]; then
   say "Downloading Node $NODE_VERSION (about 50 MB)"
   mkdir -p "$RUNTIME_DIR"
-  curl -fsSL "https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-darwin-$NODE_ARCH.tar.gz" | tar -xz -C "$RUNTIME_DIR"
+  fetch_and_unpack "https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-darwin-$NODE_ARCH.tar.gz" -C "$RUNTIME_DIR"
 fi
 PATH="$NODE_HOME/bin:$PATH"
 export PATH
@@ -43,7 +68,7 @@ fi
 say "Downloading the app into $APP_DIR"
 mkdir -p "$APP_DIR"
 # Replaces the code and leaves data/ and .env alone
-curl -fsSL "$TARBALL_URL" | tar -xz -C "$APP_DIR" --strip-components 1
+fetch_and_unpack "$TARBALL_URL" -C "$APP_DIR" --strip-components 1
 
 cd "$APP_DIR"
 say "Installing dependencies (a few minutes the first time)"

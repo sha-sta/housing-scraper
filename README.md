@@ -21,7 +21,7 @@ On a Mac, open the Terminal app, paste this line, and press Return.
 curl -fsSL https://raw.githubusercontent.com/sha-sta/housing-scraper/main/scripts/install.sh | sh
 ```
 
-The installer needs no password. It downloads its own copy of Node into `~/.housing-scraper`, puts the app in `~/housing-scraper`, starts it in the background, and opens the setup page. It takes a few minutes. Paste the same line again later to update. Your listings and settings are kept.
+The installer needs no password. On a Mac that has never been used for programming, macOS first opens a window asking to install Apple's developer tools. Click Install and leave the Terminal open. The installer continues by itself when that finishes. It then downloads its own copy of Node into `~/.housing-scraper`, puts the app in `~/housing-scraper`, starts it in the background, and opens the setup page. It takes a few minutes. Paste the same line again later to update. Your listings and settings are kept.
 
 If you would like to run it from a clone instead, you need [Node](https://nodejs.org) 24 or newer and [pnpm](https://pnpm.io).
 
