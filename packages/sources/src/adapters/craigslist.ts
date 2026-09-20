@@ -273,6 +273,7 @@ export const craigslistAdapter: SourceAdapter = {
   homepage: "https://www.craigslist.org",
   defaultIntervalSec: 120,
   defaultEnabled: true,
+  peerPosted: true,
   defaultConfig: { site: "baltimore", category: "apa" },
 
   needsSetup: async () => null,

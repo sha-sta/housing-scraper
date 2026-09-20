@@ -21,6 +21,7 @@ export function makeListing(overrides: Partial<Listing> = {}): Listing {
     description: "Bright row home two blocks from campus.",
     price: 3000,
     priceMax: null,
+    priceBasis: "unit",
     beds: 5,
     bedsMax: null,
     baths: 2,

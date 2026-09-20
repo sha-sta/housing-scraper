@@ -206,6 +206,8 @@ export const demoAdapters: SourceAdapter[] = [
     homepage: "https://example.com/demo",
     defaultIntervalSec: 20,
     defaultEnabled: true,
+    // Stands in for an open board, so the comparison scam signals apply to its fixtures.
+    peerPosted: true,
     defaultConfig: {},
     needsSetup: async () => null,
     search: async () => primarySearch(),
@@ -217,6 +219,7 @@ export const demoAdapters: SourceAdapter[] = [
     homepage: "https://example.com/demo-partner",
     defaultIntervalSec: 20,
     defaultEnabled: true,
+    peerPosted: true,
     defaultConfig: {},
     needsSetup: async () => null,
     search: async () => partnerSearch(),

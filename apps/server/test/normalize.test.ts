@@ -11,7 +11,9 @@ import {
   extractEmail,
   extractLeaseMonths,
   extractPhone,
+  inferPriceBasis,
   inferPropertyType,
+  isNonHousing,
 } from "../src/pipeline/text.ts";
 
 const NOW = new Date("2026-09-20T12:00:00.000Z");
@@ -130,6 +132,45 @@ describe("contact extraction", () => {
   });
 });
 
+describe("price basis inference", () => {
+  it("reads the per room wording students actually see", () => {
+    expect(inferPriceBasis("5 bedrooms available in a spectacular renovated rowhome", 5, 850)).toBe("room");
+    expect(inferPriceBasis("Large room, $700 per room", 4, 700)).toBe("room");
+    expect(inferPriceBasis("Rent is per bedroom", 3, 900)).toBe("room");
+    expect(inferPriceBasis("$650 /bedroom", 4, 650)).toBe("room");
+    expect(inferPriceBasis("Rooms available now", 5, 900)).toBe("room");
+    expect(inferPriceBasis("$800 per person", 6, 800)).toBe("room");
+  });
+
+  it("uses the per bedroom ceiling when the wording says nothing", () => {
+    expect(inferPriceBasis("Charles Village Townhouse", 5, 495)).toBe("room");
+    // Exactly at the ceiling is a whole unit, only strictly under counts as a room.
+    expect(inferPriceBasis("Townhouse", 2, 900)).toBe("unit");
+    expect(inferPriceBasis("Townhouse", 2, 898)).toBe("room");
+    expect(inferPriceBasis("Studio", 1, 300)).toBe("unit");
+    expect(inferPriceBasis("Row home", 5, 3000)).toBe("unit");
+    expect(inferPriceBasis("Row home", null, 3000)).toBe("unit");
+  });
+});
+
+describe("non-housing detection", () => {
+  it("drops the AppFolio parking and storage rows", () => {
+    expect(isNonHousing("Parking Spot 14", null)).toBe(true);
+    expect(isNonHousing("Secure parking", null)).toBe(true);
+    expect(isNonHousing("Garage - 2900 block", null)).toBe(true);
+    expect(isNonHousing("Storage unit B", null)).toBe(true);
+    expect(isNonHousing("Parking space, monthly", null)).toBe(true);
+  });
+
+  it("keeps anything that is a place to live", () => {
+    expect(isNonHousing("3BR rowhome with garage parking", 3)).toBe(false);
+    expect(isNonHousing("3BR rowhome with garage parking", null)).toBe(false);
+    expect(isNonHousing("Apartment with parking space", null)).toBe(false);
+    expect(isNonHousing("Townhouse, garage included", null)).toBe(false);
+    expect(isNonHousing("Parking Spot 14", 0)).toBe(false);
+  });
+});
+
 describe("restriction detection", () => {
   it("spots income restricted wording", () => {
     expect(detectIncomeRestricted("This is an income-restricted property")).toBe(true);
@@ -234,6 +275,29 @@ describe("normalize", () => {
     const kept = normalize(stated, NOW);
     expect(kept.incomeRestricted).toBe(false);
     expect(kept.seniorHousing).toBe(false);
+  });
+
+  it("keeps a stated price basis over the inference", () => {
+    const stated = RawListingSchema.parse({
+      sourceId: "demo",
+      sourceListingId: "unit-7",
+      url: "https://example.com/unit-7",
+      title: "5 bedrooms available in a renovated rowhome",
+      price: 850,
+      beds: 5,
+      priceBasis: "unit",
+    });
+    expect(normalize(stated, NOW).priceBasis).toBe("unit");
+
+    const silent = RawListingSchema.parse({
+      sourceId: "demo",
+      sourceListingId: "unit-8",
+      url: "https://example.com/unit-8",
+      title: "5 bedrooms available in a renovated rowhome",
+      price: 850,
+      beds: 5,
+    });
+    expect(normalize(silent, NOW).priceBasis).toBe("room");
   });
 
   it("carries the bed range through", () => {

@@ -134,7 +134,8 @@ export const apartmentListAdapter: SourceAdapter = {
   kind: "http",
   homepage: ORIGIN,
   defaultIntervalSec: 600,
-  defaultEnabled: true,
+  // Off by default. Its search cannot express more than "3+ beds" and its rows carry no address or photos.
+  defaultEnabled: false,
   defaultConfig: { paths: ["/md/baltimore"] },
 
   async needsSetup(ctx) {

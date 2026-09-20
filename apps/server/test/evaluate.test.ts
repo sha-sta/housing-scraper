@@ -330,15 +330,15 @@ describe("score components", () => {
 
 describe("per person price", () => {
   it("divides a whole unit by the group size", () => {
-    expect(perPersonPrice(3000, "rowhome", 6)).toBe(500);
+    expect(perPersonPrice(3000, "rowhome", 6, 3000)).toBe(500);
   });
 
   it("uses the listed price for a room, which is already one share", () => {
-    expect(perPersonPrice(900, "room", 6)).toBe(900);
+    expect(perPersonPrice(900, "room", 6, 900)).toBe(900);
   });
 
   it("returns null when the price is unknown", () => {
-    expect(perPersonPrice(null, "rowhome", 6)).toBeNull();
+    expect(perPersonPrice(null, "rowhome", 6, null)).toBeNull();
   });
 
   it("reports the per person price on the match", () => {
@@ -412,6 +412,72 @@ describe("bed ranges", () => {
   it("rejects a building whose plans miss the profile", () => {
     const wantsSix = makeProfile(makePreferences((p) => ({ ...p, beds: { ...p.beds, min: 6, max: null } })));
     expect(evaluate(building, wantsSix, NOW).rejectedBy).toContain("bedsOutOfRange");
+  });
+});
+
+describe("per room pricing", () => {
+  const perRoom = makeListing({ price: 850, priceBasis: "room", beds: 5, propertyType: "rowhome" });
+
+  it("prices a five bedroom row home at 850 per room for a group of six", () => {
+    const profile = makeProfile(makePreferences((p) => ({ ...p, group: { size: 6 } })));
+    const match = evaluate(perRoom, profile, NOW);
+    expect(match.monthlyTotal).toBe(4250);
+    expect(match.pricePerPerson).toBe(708.33);
+  });
+
+  it("filters maxTotal on the whole unit rent, not on the room price", () => {
+    const tight = makeProfile(
+      makePreferences((p) => ({ ...p, group: { size: 6 }, price: { ...p.price, maxTotal: 4000 } })),
+    );
+    expect(evaluate(perRoom, tight, NOW).rejectedBy).toContain("priceOverMax");
+
+    const roomy = makeProfile(
+      makePreferences((p) => ({ ...p, group: { size: 6 }, price: { ...p.price, maxTotal: 4500 } })),
+    );
+    expect(evaluate(perRoom, roomy, NOW).rejectedBy).not.toContain("priceOverMax");
+  });
+
+  it("reports monthlyTotal on a rejected listing too", () => {
+    const tight = makeProfile(makePreferences((p) => ({ ...p, price: { ...p.price, maxTotal: 100 } })));
+    const match = evaluate(perRoom, tight, NOW);
+    expect(match.matched).toBe(false);
+    expect(match.monthlyTotal).toBe(4250);
+  });
+
+  it("leaves monthlyTotal null when the price is unknown", () => {
+    expect(evaluate(makeListing({ price: null }), makeProfile(), NOW).monthlyTotal).toBeNull();
+  });
+
+  it("multiplies the interpolated room price for a ranged building", () => {
+    const building = makeListing({ beds: 1, bedsMax: 4, price: 400, priceMax: 700, priceBasis: "room" });
+    const profile = makeProfile(
+      makePreferences((p) => ({ ...p, group: { size: 4 }, beds: { ...p.beds, min: 4, max: 4 } })),
+    );
+    const match = evaluate(building, profile, NOW);
+    expect(match.monthlyTotal).toBe(2800);
+    expect(match.pricePerPerson).toBe(700);
+  });
+
+  it("gives a single shared room its listed price as the per person price", () => {
+    const room = makeListing({ price: 900, propertyType: "room", priceBasis: "unit", beds: 1 });
+    const profile = makeProfile(
+      makePreferences((p) => ({
+        ...p,
+        group: { size: 6 },
+        propertyTypes: [...p.propertyTypes, "room"],
+        rules: { ...p.rules, allowRoomsInSharedUnit: true },
+      })),
+    );
+    const match = evaluate(room, profile, NOW);
+    expect(match.monthlyTotal).toBe(900);
+    expect(match.pricePerPerson).toBe(900);
+  });
+
+  it("leaves a whole unit listing alone", () => {
+    const profile = makeProfile(makePreferences((p) => ({ ...p, group: { size: 6 } })));
+    const match = evaluate(makeListing({ price: 3000 }), profile, NOW);
+    expect(match.monthlyTotal).toBe(3000);
+    expect(match.pricePerPerson).toBe(500);
   });
 });
 

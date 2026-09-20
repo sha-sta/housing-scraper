@@ -168,6 +168,7 @@ export const facebookMarketplaceAdapter: SourceAdapter = {
   homepage: `${ORIGIN}/marketplace`,
   defaultIntervalSec: 900,
   defaultEnabled: false,
+  peerPosted: true,
   defaultConfig: {},
 
   async needsSetup(ctx) {

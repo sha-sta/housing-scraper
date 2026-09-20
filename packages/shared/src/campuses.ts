@@ -1,22 +1,25 @@
-import type { Anchor } from "./preferences.ts";
+import { z } from "zod";
+import { AnchorSchema } from "./preferences.ts";
 
-export interface KnownBuilding {
-  name: string;
+export const KnownBuildingSchema = z.object({
+  name: z.string(),
   // Street address when verified. Used for address-based exclusion.
-  address: string | null;
-  manager: string | null;
-}
+  address: z.string().nullable(),
+  manager: z.string().nullable(),
+});
+export type KnownBuilding = z.infer<typeof KnownBuildingSchema>;
 
-export interface CampusPreset {
-  id: string;
-  anchor: Anchor;
+export const CampusPresetSchema = z.object({
+  id: z.string(),
+  anchor: AnchorSchema,
   // Where sources should center their geo queries, and how wide to cast the net
-  searchRadiusMiles: number;
-  zips: string[];
-  neighborhoods: string[];
+  searchRadiusMiles: z.number(),
+  zips: z.array(z.string()),
+  neighborhoods: z.array(z.string()),
   // Large managed buildings a profile can exclude or target with one click
-  knownBuildings: KnownBuilding[];
-}
+  knownBuildings: z.array(KnownBuildingSchema),
+});
+export type CampusPreset = z.infer<typeof CampusPresetSchema>;
 
 // Coordinates are campus centers, accurate to about a block. Profiles can override with a custom anchor.
 export const CAMPUSES: CampusPreset[] = [

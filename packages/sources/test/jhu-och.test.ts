@@ -86,6 +86,18 @@ describe("parseJhuSearchBody", () => {
     expect(carlyle?.contact?.phone).toMatch(/^\d{10}$/);
   });
 
+  it("reads the per-bedroom rent basis the portal states on every listing", () => {
+    // Charles Village Townhouse advertises $495 /Bedroom for a five bedroom house, so the
+    // price is one room's rent, not the whole house.
+    const townhouse = listings[2];
+    expect(townhouse?.priceBasis).toBe("room");
+    expect(townhouse?.price).toBe(495);
+    expect(townhouse?.beds).toBe(5);
+
+    expect(listings[0]?.priceBasis).toBe("room");
+    expect(listings[1]?.priceBasis).toBe("unit");
+  });
+
   it("marks a shared-space listing as a room and builds the absolute profile URL", () => {
     const townhouse = listings[2];
     expect(townhouse?.sourceListingId).toBe("ocpq7qphxy");
@@ -146,6 +158,10 @@ describe("parseJhuDetailBody", () => {
 
   it("reports income restriction from the empty array the site sends", () => {
     expect(detail.incomeRestricted).toBe(false);
+  });
+
+  it("reads the rent basis from the detail body", () => {
+    expect(detail.priceBasis).toBe("unit");
   });
 });
 

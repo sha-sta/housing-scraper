@@ -24,11 +24,11 @@ describe("render", () => {
 
   it("keeps a line whose other variables filled in", () => {
     const out = render("{{me.fullName}}\n{{me.email}}\n{{me.phone}}", {
-      "me.fullName": "Christian",
+      "me.fullName": "Sam",
       "me.email": "c@example.edu",
       "me.phone": "",
     });
-    expect(out).toBe("Christian\nc@example.edu");
+    expect(out).toBe("Sam\nc@example.edu");
   });
 
   it("removes the whitespace and punctuation an empty variable leaves behind", () => {
@@ -60,7 +60,7 @@ describe("templateVariables", () => {
     const listing = makeListing({ price: 3000, beds: 5 });
     const profile = makeProfile();
     const variables = templateVariables(listing, profile, {
-      fullName: "Christian Yoon",
+      fullName: "Sam Rivera",
       email: "c@example.edu",
       phone: "(410) 555-0000",
       school: "Johns Hopkins University",
@@ -76,6 +76,7 @@ describe("templateVariables", () => {
         "listing.availableDate",
         "listing.beds",
         "listing.price",
+        "listing.priceText",
         "listing.title",
         "listing.url",
         "me.blurb",
@@ -88,8 +89,18 @@ describe("templateVariables", () => {
       ].sort(),
     );
     expect(variables["listing.price"]).toBe("$3,000");
+    expect(variables["listing.priceText"]).toBe("$3,000 a month");
     expect(variables["listing.availableDate"]).toBe("June 1, 2027");
     expect(variables["listing.url"]).toBe("https://example.com/unit-1");
+  });
+
+  it("says per room when the price rents one bedroom", () => {
+    const variables = templateVariables(
+      makeListing({ price: 850, priceBasis: "room", beds: 5 }),
+      makeProfile(),
+      { fullName: "", email: "", phone: "", school: "", blurb: "" },
+    );
+    expect(variables["listing.priceText"]).toBe("$850 per room");
   });
 
   it("leaves a missing date and a missing contact name empty", () => {

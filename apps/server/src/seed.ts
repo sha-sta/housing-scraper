@@ -6,7 +6,7 @@ const GROUP_INTRO_SUBJECT = "Tour request for {{listing.address}} from a group o
 
 const GROUP_INTRO_BODY = `Hello {{contact.name}},
 
-My name is {{me.fullName}} and I am a student at {{me.school}}. I am writing about your listing at {{listing.address}} for {{listing.price}} a month.
+My name is {{me.fullName}} and I am a student at {{me.school}}. I am writing about your listing at {{listing.address}}, listed at {{listing.priceText}}.
 
 {{me.blurb}}
 

@@ -236,6 +236,73 @@ describe("scam signals", () => {
   });
 });
 
+describe("price basis and non-housing", () => {
+  it("drops parking and storage rows and keeps a home with a garage", async () => {
+    addProfile(harness);
+    addSource(harness, "fake");
+    const adapter = fakeAdapter("fake", () => [
+      unit({ sourceListingId: "p1", title: "Parking Spot 14", beds: null, price: 95, address: null }),
+      unit({ sourceListingId: "p2", title: "Secure parking", beds: null, price: 175, address: null }),
+      unit({ sourceListingId: "p3", title: "Storage unit B", beds: null, price: 120, address: null }),
+      unit({ sourceListingId: "h1", title: "3BR rowhome with garage parking", beds: 3 }),
+    ]);
+
+    await runOnce(harness, adapter);
+    const stored = harness.repos.listings.active();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.title).toBe("3BR rowhome with garage parking");
+  });
+
+  it("prices a per room row home on the whole unit rent", async () => {
+    const profile = addProfile(harness);
+    addSource(harness, "fake");
+    const adapter = fakeAdapter("fake", () => [
+      unit({
+        sourceListingId: "jhu-1",
+        title: "5 bedrooms available in a spectacular renovated rowhome",
+        description: "Five large bedrooms, laundry in unit.",
+        price: 850,
+        beds: 5,
+      }),
+    ]);
+
+    await runOnce(harness, adapter);
+    const listing = harness.repos.listings.active()[0]!;
+    expect(listing.priceBasis).toBe("room");
+
+    const match = harness.repos.profiles.getMatch(listing.id, profile.id);
+    expect(match?.monthlyTotal).toBe(4250);
+    expect(match?.pricePerPerson).toBe(708.33);
+    expect(match?.matched).toBe(true);
+    expect(match?.rejectedBy).not.toContain("suspectedScam");
+
+    expect(harness.published[0]?.message).toContain("$850 per room, about $4,250 total, $708 each");
+  });
+
+  it("keeps the comparison signals off a managed feed", async () => {
+    addProfile(harness);
+    addSource(harness, "managed");
+    const adapter = fakeAdapter("managed", () =>
+      Array.from({ length: 8 }, (_, i) =>
+        unit({
+          sourceId: "managed",
+          sourceListingId: `m-${i}`,
+          url: `https://example.com/managed/m-${i}`,
+          title: `Unit ${i}`,
+          address: null,
+          photos: [],
+          lat: 39.33 + i * 0.001,
+          price: i === 0 ? 300 : 3000,
+        }),
+      ),
+    );
+
+    await runOnce(harness, adapter);
+    const flagged = harness.repos.listings.active().filter((l) => l.scamSignals.length > 0);
+    expect(flagged).toHaveLength(0);
+  });
+});
+
 describe("the first run of a source", () => {
   it("sends one baseline summary instead of a push per listing", async () => {
     const profile = addProfile(harness);

@@ -16,12 +16,12 @@ One Node process runs the scheduler, the pipeline, the API, and serves the built
 Each source runs on its own interval with jitter. One run does this:
 
 1. `adapter.search(ctx)` returns `RawListingInput[]` for the union search area of all enabled profiles.
-2. The pipeline validates each item with `RawListingSchema`. Invalid items are logged and dropped.
+2. The pipeline validates each item with `RawListingSchema`. Invalid items are logged and dropped. Listings that are not housing (parking spots, garages, storage units) are dropped here too.
 3. New items (unknown `sourceId` + `sourceListingId`) go through `adapter.enrich` when the adapter has one.
 4. Normalize: clean the address, infer property type from text ("rowhome", "townhouse", "entire house"), extract amenities, available date, and lease length from the description, and extract emails and phone numbers from the description into `contact`.
 5. Geocode when `lat` and `lon` are missing, using the US Census geocoder. Hits and misses are cached by address forever. The public Nominatim API is deliberately not used, because its usage policy restricts scripts that run on a schedule.
 6. Dedupe: the same unit seen on two sources becomes one listing with two `sources` entries. Two records are the same unit when their normalized addresses (including unit number) match, or when they sit within 40 meters and agree on beds and price.
-7. Scam signals are computed and stored. They never drop a listing. Profiles decide whether to hide flagged listings.
+7. Scam signals are computed and stored. They never drop a listing. Profiles decide whether to hide flagged listings. The wording signals apply to every source. The two signals that compare a listing against others (`priceFarBelowArea`, `noAddressNoPhotos`) apply only to sources where anyone can post (`peerPosted` adapters), compare whole-unit rent, and leave out income-restricted housing and single rooms.
 8. Upsert. A price change appends to `priceHistory`. A listing unseen for 3 consecutive successful runs of every one of its sources becomes `gone`. A `gone` listing that reappears becomes `active` again.
 9. Evaluate the listing against every enabled profile and store one `Match` row per pair.
 10. For each profile where the listing newly matched with `score >= notify.minScore`, create a notification and push it. When `outreach.autoDraft` is on and `score >= outreach.minScore`, stage a draft first so the push can carry the Send button.
@@ -43,7 +43,7 @@ Walk minutes default to haversine distance times 1.3, at 3 mph. When `VALHALLA_U
 
 A row with `bedsMax` stands for a building with several floor plans. The beds filter passes when the range from `beds` to `bedsMax` overlaps the profile's range. The engine then scores the smallest bed count inside the overlap. The rent for that bed count is interpolated between `price` and `priceMax`, because sources give only the two ends of the range.
 
-Per-person price is `price / group.size`. For a listing priced per room (`propertyType: "room"`), per-person price is the listed price.
+Many student row homes are advertised per bedroom ("5 bedrooms available, $850"). `priceBasis` records whether a price rents the whole unit or one room. A source states it when it can. Otherwise normalize infers `room` from wording such as "per room" or "per bedroom", or when a listing with 2 or more bedrooms costs under $450 per bedroom. The engine prices a per-room listing at `price` times its bedroom count, stores that as `monthlyTotal`, and divides by `group.size` for the per-person price. A single room in a shared unit (`propertyType: "room"`) has a per-person price equal to its listed price.
 
 ## Notifications
 

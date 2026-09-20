@@ -30,6 +30,11 @@ export const AMENITIES = [
 export const AmenitySchema = z.enum(AMENITIES);
 export type Amenity = z.infer<typeof AmenitySchema>;
 
+// unit = the price rents the whole unit. room = the price rents one bedroom, which is how many
+// student row homes near campus are advertised ("5 bedrooms available, $850").
+export const PriceBasisSchema = z.enum(["unit", "room"]);
+export type PriceBasis = z.infer<typeof PriceBasisSchema>;
+
 // true = listing says yes, false = listing says no, missing key = listing is silent
 export const AmenityMapSchema = z.partialRecord(AmenitySchema, z.boolean());
 export type AmenityMap = z.infer<typeof AmenityMapSchema>;
@@ -58,6 +63,8 @@ export const RawListingSchema = z.object({
   price: z.number().nullable().default(null),
   // Some sources give a range for multi-unit buildings
   priceMax: z.number().nullable().default(null),
+  // null = the source does not say. The pipeline then infers it from the text and the price per bedroom.
+  priceBasis: PriceBasisSchema.nullable().default(null),
   beds: z.number().nullable().default(null),
   // Set when one row stands for a building with several floor plans. beds is then the smallest
   // plan and price its rent, bedsMax the largest plan and priceMax its rent.
@@ -117,6 +124,7 @@ export const ListingSchema = z.object({
   description: z.string().nullable(),
   price: z.number().nullable(),
   priceMax: z.number().nullable(),
+  priceBasis: PriceBasisSchema.default("unit"),
   beds: z.number().nullable(),
   bedsMax: z.number().nullable().default(null),
   baths: z.number().nullable(),

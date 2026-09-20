@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import { computeScamSignals, descriptionKey, type ScamContext, type ScamInput } from "../src/pipeline/scam.ts";
 
 function input(overrides: Partial<ScamInput> = {}): ScamInput {
-  return { price: 3000, address: "3210 Guilford Ave", photos: ["a.jpg"], text: "Nice row home.", ...overrides };
+  return {
+    monthlyTotal: 3000,
+    address: "3210 Guilford Ave",
+    photos: ["a.jpg"],
+    text: "Nice row home.",
+    peerPosted: true,
+    ...overrides,
+  };
 }
 
 function context(overrides: Partial<ScamContext> = {}): ScamContext {
@@ -14,14 +21,31 @@ describe("computeScamSignals", () => {
     expect(computeScamSignals(input(), context())).toEqual([]);
   });
 
+  it("stays quiet on a managed feed, where a missing address and photos are normal", () => {
+    const managed = { peerPosted: false };
+    expect(computeScamSignals(input({ ...managed, address: null, photos: [] }), context())).toEqual([]);
+    expect(
+      computeScamSignals(
+        input({ ...managed, monthlyTotal: 400 }),
+        context({ comparablePrices: [3000, 3100, 3200, 2900, 3050] }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("keeps the wording signals on for every source", () => {
+    expect(
+      computeScamSignals(input({ peerPosted: false, text: "Send a wire transfer to hold it" }), context()),
+    ).toContain("wireOrGiftCardLanguage");
+  });
+
   it("flags a price far below the comparable median", () => {
     const comparables = { comparablePrices: [3000, 3100, 3200, 2900, 3050] };
-    expect(computeScamSignals(input({ price: 800 }), context(comparables))).toContain("priceFarBelowArea");
-    expect(computeScamSignals(input({ price: 2800 }), context(comparables))).not.toContain("priceFarBelowArea");
+    expect(computeScamSignals(input({ monthlyTotal: 800 }), context(comparables))).toContain("priceFarBelowArea");
+    expect(computeScamSignals(input({ monthlyTotal: 2800 }), context(comparables))).not.toContain("priceFarBelowArea");
   });
 
   it("stays quiet when there are too few comparables to trust", () => {
-    expect(computeScamSignals(input({ price: 200 }), context({ comparablePrices: [3000, 3100] }))).toEqual([]);
+    expect(computeScamSignals(input({ monthlyTotal: 200 }), context({ comparablePrices: [3000, 3100] }))).toEqual([]);
   });
 
   it("flags wire transfer and gift card wording", () => {
@@ -67,7 +91,7 @@ describe("computeScamSignals", () => {
       input({
         address: null,
         photos: [],
-        price: 400,
+        monthlyTotal: 400,
         text: "I am out of the country, wire transfer the deposit before you see it.",
       }),
       context({ comparablePrices: [3000, 3100, 3200, 2900, 3050] }),

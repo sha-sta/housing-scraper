@@ -18,7 +18,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/api/app.ts";
 import { silentLogger } from "../src/log.ts";
 import { addProfile, createHarness, fakeAdapter, runOnce, type Harness } from "./harness.ts";
-import { HOMEWOOD } from "./helpers.ts";
+import { HOMEWOOD, makeListing } from "./helpers.ts";
 
 const JSON_HEADERS = new Headers({ "content-type": "application/json" });
 
@@ -97,12 +97,12 @@ describe("settings", () => {
     const res = await app.request("/api/settings", {
       method: "PATCH",
       headers: JSON_HEADERS,
-      body: JSON.stringify({ composeVia: "outlook", identity: { fullName: "Christian Yoon" } }),
+      body: JSON.stringify({ composeVia: "outlook", identity: { fullName: "Sam Rivera" } }),
     });
     expect(res.status).toBe(200);
     const settings = SettingsSchema.parse(await res.json());
     expect(settings.composeVia).toBe("outlook");
-    expect(settings.identity.fullName).toBe("Christian Yoon");
+    expect(settings.identity.fullName).toBe("Sam Rivera");
     expect(settings.ntfyServer).toBe("https://ntfy.sh");
   });
 
@@ -291,6 +291,59 @@ describe("listings", () => {
     expect(
       ListingPageSchema.parse(await (await app.request("/api/listings?includeHidden=true&starred=true")).json()).total,
     ).toBe(0);
+  });
+
+  it("ranks the price sorts by whole unit rent, not by the raw number on the card", async () => {
+    const profile = addProfile(harness);
+    const base = { photos: ["https://example.com/p.jpg"], lat: 39.3285, lon: -76.6149 };
+    // The per-room row home costs 4,250 a month and belongs between the other two.
+    harness.repos.listings.insert(
+      makeListing({ ...base, id: "lst_cheap", title: "Cheap", price: 3000, beds: 5, priceBasis: "unit" }),
+    );
+    harness.repos.listings.insert(
+      makeListing({ ...base, id: "lst_perRoom", title: "Per room", price: 850, beds: 5, priceBasis: "room" }),
+    );
+    harness.repos.listings.insert(
+      makeListing({ ...base, id: "lst_dear", title: "Dear", price: 5000, beds: 5, priceBasis: "unit" }),
+    );
+    harness.repos.listings.insert(
+      makeListing({ ...base, id: "lst_noPrice", title: "No price", price: null, beds: 5, priceBasis: "unit" }),
+    );
+
+    const ids = async (query: string): Promise<string[]> => {
+      const page = ListingPageSchema.parse(await (await app.request(`/api/listings?${query}`)).json());
+      return page.items.map((item) => item.listing.id);
+    };
+
+    // Without a profile the rent is computed from price and beds.
+    expect(await ids("scope=all&sort=priceAsc")).toEqual([
+      "lst_cheap",
+      "lst_perRoom",
+      "lst_dear",
+      "lst_noPrice",
+    ]);
+    expect(await ids("scope=all&sort=priceDesc")).toEqual([
+      "lst_dear",
+      "lst_perRoom",
+      "lst_cheap",
+      "lst_noPrice",
+    ]);
+
+    // With a profile the stored Match.monthlyTotal drives the same order.
+    await harness.pipeline.evaluateAll(profile, "silent");
+    expect(harness.repos.profiles.getMatch("lst_perRoom", profile.id)?.monthlyTotal).toBe(4250);
+    expect(await ids(`scope=all&profileId=${profile.id}&sort=priceAsc`)).toEqual([
+      "lst_cheap",
+      "lst_perRoom",
+      "lst_dear",
+      "lst_noPrice",
+    ]);
+    expect(await ids(`scope=all&profileId=${profile.id}&sort=priceDesc`)).toEqual([
+      "lst_dear",
+      "lst_perRoom",
+      "lst_cheap",
+      "lst_noPrice",
+    ]);
   });
 
   it("rejects a query outside the documented bounds", async () => {

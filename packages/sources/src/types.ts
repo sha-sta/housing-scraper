@@ -94,6 +94,9 @@ export interface SourceAdapter {
   homepage: string;
   defaultIntervalSec: number;
   defaultEnabled: boolean;
+  // True when anyone can post a listing with no vetting (Craigslist, Facebook). The scam checks
+  // that compare price and completeness only apply to these sources.
+  peerPosted?: boolean;
   defaultConfig: Record<string, unknown>;
   /** Returns a human-readable hint when the source cannot run yet, or null when it is ready. */
   needsSetup(ctx: Pick<SourceContext, "config" | "browser">): Promise<string | null>;

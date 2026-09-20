@@ -4,6 +4,7 @@ import {
   ContactSchema,
   ListingStateSchema,
   ListingStatusSchema,
+  PriceBasisSchema,
   PricePointSchema,
   PropertyTypeSchema,
   ScamSignalSchema,
@@ -53,6 +54,7 @@ function toListing(row: ListingRow, sourceRows: SourceRow[]): Listing {
     description: row.description,
     price: row.price,
     priceMax: row.priceMax,
+    priceBasis: PriceBasisSchema.parse(row.priceBasis),
     beds: row.beds,
     bedsMax: row.bedsMax,
     baths: row.baths,
@@ -88,6 +90,7 @@ function toRow(listing: Listing): ListingRow {
     description: listing.description,
     price: listing.price,
     priceMax: listing.priceMax,
+    priceBasis: listing.priceBasis,
     beds: listing.beds,
     bedsMax: listing.bedsMax,
     baths: listing.baths,
@@ -268,6 +271,7 @@ export function createListingRepo(db: Db) {
           listingId: matches.listingId,
           bestScore: sql<number>`max(${matches.score})`.as("best_score"),
           nearest: sql<number | null>`min(${matches.walkMinutes})`.as("nearest"),
+          rent: sql<number | null>`min(${matches.monthlyTotal})`.as("rent"),
           anyMatched: sql<number>`max(${matches.matched})`.as("any_matched"),
         })
         .from(matches)
@@ -304,11 +308,20 @@ export function createListingRepo(db: Db) {
       }
       const where = conditions.length === 0 ? undefined : and(...conditions);
 
+      // Price sorts rank on whole-unit rent. A five bedroom house at 850 per room costs 4,250, and
+      // sorting it next to real 850 listings would put the wrong thing at the top of the page.
+      const computedRent = sql`case
+        when ${listings.priceBasis} = 'room' and ${listings.beds} is not null then ${listings.price} * ${listings.beds}
+        else ${listings.price}
+      end`;
+      const rent = q.profileId === undefined ? computedRent : sql`coalesce(${agg.rent}, ${computedRent})`;
+
       const order = {
         newest: desc(listings.firstSeenAt),
         score: desc(sql`coalesce(${agg.bestScore}, -1)`),
-        priceAsc: asc(sql`coalesce(${listings.price}, 1e9)`),
-        priceDesc: desc(sql`coalesce(${listings.price}, -1)`),
+        // A listing with no price sorts last whichever way the page is ordered.
+        priceAsc: asc(sql`coalesce(${rent}, 1e9)`),
+        priceDesc: desc(sql`coalesce(${rent}, -1)`),
         distance: asc(sql`coalesce(${agg.nearest}, 1e9)`),
       }[q.sort];
 

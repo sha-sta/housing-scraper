@@ -19,6 +19,7 @@ import { createPersonalizer } from "./outreach/llm.ts";
 import { createMailer } from "./outreach/mailer.ts";
 import { createGeocoder } from "./pipeline/geocode.ts";
 import { createPipeline } from "./pipeline/run.ts";
+import { repairListings } from "./repair.ts";
 import { createScheduler } from "./scheduler.ts";
 import { seed } from "./seed.ts";
 import { lazyBrowserPool, loadSources, unavailableBrowserPool, unavailableHttpClient } from "./sources.ts";
@@ -41,6 +42,8 @@ async function main(): Promise<void> {
       ? unavailableBrowserPool()
       : sources.createBrowserPool({ log, dataDir: env.dataDir, headless: true }),
   );
+
+  const peerPostedIds = new Set(adapters.filter((a) => a.peerPosted === true).map((a) => a.id));
 
   seed({ repos, adapters, defaultDashboardUrl: `http://localhost:${env.port}` });
 
@@ -81,7 +84,13 @@ async function main(): Promise<void> {
     router: createRouter(repos.config, log, env.valhallaUrl),
     log,
     pushContext,
+    peerPosted: (sourceId) => peerPostedIds.has(sourceId),
   });
+
+  // Stored rows predate the price basis and the narrowed scam rules, so they are recomputed once
+  // on every boot. Nothing here pushes: matches keep whatever notified_at they already had.
+  const repaired = repairListings(repos, (id) => peerPostedIds.has(id));
+  if (repaired > 0) log.info("recomputed stored listings", { listings: repaired });
 
   const scheduler = createScheduler({
     adapters,

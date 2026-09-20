@@ -79,11 +79,33 @@ export function resolveBedPlan(listing: Listing, range: { min: number; max: numb
   return { beds, rent, overlaps };
 }
 
-export function perPersonPrice(rent: number | null, propertyType: Listing["propertyType"], groupSize: number): number | null {
-  if (rent === null) return null;
-  // A room is already one person's share, so it is not divided again.
-  if (propertyType === "room") return rent;
-  return rent / Math.max(1, groupSize);
+/**
+ * What the whole unit costs a month. A per-room price has to be multiplied out first, because a
+ * five bedroom row home advertised at 850 rents for 4,250, not 850.
+ */
+export function monthlyTotalFor(plan: BedPlan, basis: Listing["priceBasis"]): number | null {
+  if (plan.rent === null) return null;
+  if (basis === "room" && plan.beds !== null) return plan.rent * plan.beds;
+  return plan.rent;
+}
+
+/** Whole-unit rent for a stored listing, used by the scam comparables. */
+export function wholeUnitRent(listing: Listing): number | null {
+  if (listing.price === null) return null;
+  if (listing.priceBasis === "room" && listing.beds !== null) return listing.price * listing.beds;
+  return listing.price;
+}
+
+export function perPersonPrice(
+  monthlyTotal: number | null,
+  propertyType: Listing["propertyType"],
+  groupSize: number,
+  listedPrice: number | null,
+): number | null {
+  // A single room in a shared unit is already one person's share, so it is not divided again.
+  if (propertyType === "room") return listedPrice;
+  if (monthlyTotal === null) return null;
+  return monthlyTotal / Math.max(1, groupSize);
 }
 
 export function priceScore(perPerson: number | null, ideal: number | null, max: number | null): number {
@@ -137,6 +159,7 @@ function hardFilters(
   preferences: Preferences,
   now: Date,
   plan: BedPlan,
+  monthlyTotal: number | null,
   perPerson: number | null,
   walkMinutes: number | null,
   text: string,
@@ -144,10 +167,10 @@ function hardFilters(
   const reasons: FilterReason[] = [];
   const { price, beds, baths, sqft, location, dates, rules, exclusions, keywords } = preferences;
 
-  if (plan.rent === null) {
+  if (monthlyTotal === null) {
     if (!price.allowUnknown) reasons.push("priceUnknown");
   } else {
-    const overTotal = price.maxTotal !== null && plan.rent > price.maxTotal;
+    const overTotal = price.maxTotal !== null && monthlyTotal > price.maxTotal;
     const overPerPerson = price.maxPerPerson !== null && perPerson !== null && perPerson > price.maxPerPerson;
     if (overTotal || overPerPerson) reasons.push("priceOverMax");
   }
@@ -231,7 +254,8 @@ export function evaluate(
 ): Match {
   const preferences = profile.preferences;
   const plan = resolveBedPlan(listing, preferences.beds);
-  const perPerson = perPersonPrice(plan.rent, listing.propertyType, preferences.group.size);
+  const monthlyTotal = monthlyTotalFor(plan, listing.priceBasis);
+  const perPerson = perPersonPrice(monthlyTotal, listing.propertyType, preferences.group.size, listing.price);
 
   let distanceMiles: number | null = null;
   if (listing.lat !== null && listing.lon !== null) {
@@ -248,7 +272,7 @@ export function evaluate(
         : walkMinutesForMiles(distanceMiles);
 
   const text = haystack(listing);
-  const rejectedBy = hardFilters(listing, preferences, now, plan, perPerson, walkMinutes, text);
+  const rejectedBy = hardFilters(listing, preferences, now, plan, monthlyTotal, perPerson, walkMinutes, text);
 
   const breakdown = {
     price: round(priceScore(perPerson, preferences.price.idealPerPerson, preferences.price.maxPerPerson)),
@@ -283,6 +307,7 @@ export function evaluate(
     rejectedBy,
     score: Math.round(clamp(weighted + breakdown.keywordBoost, 0, 100) * 10) / 10,
     breakdown,
+    monthlyTotal: monthlyTotal === null ? null : round(monthlyTotal),
     pricePerPerson: perPerson === null ? null : round(perPerson),
     walkMinutes: walkMinutes === null ? null : round(walkMinutes),
     distanceMiles: distanceMiles === null ? null : round(distanceMiles),

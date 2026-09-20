@@ -10,6 +10,7 @@ import {
   inferPropertyType,
   detectIncomeRestricted,
   detectSeniorHousing,
+  inferPriceBasis,
 } from "./text.ts";
 
 /** Everything the pipeline knows about a unit before it is matched against stored listings. */
@@ -51,6 +52,8 @@ export function normalize(raw: RawListing, now: Date): NormalizedListing {
     description,
     price: raw.price,
     priceMax: raw.priceMax,
+    // A source that states the basis is trusted. The wording check only fills a silence.
+    priceBasis: raw.priceBasis ?? inferPriceBasis(text, raw.beds, raw.price),
     beds: raw.beds,
     bedsMax: raw.bedsMax,
     baths: raw.baths,

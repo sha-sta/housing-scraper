@@ -94,6 +94,10 @@ describe("appfolio", () => {
     expect(listings[0]?.sqft).toBeNull();
   });
 
+  it("leaves priceBasis null, because AppFolio never states the rent basis", () => {
+    for (const listing of listings) expect(listing.priceBasis).toBeUndefined();
+  });
+
   it("throws SourceLayoutError when listing blocks exist but none parse", () => {
     expect(() =>
       parseAppfolioListings('<div class="js-listing-item"></div>', "someone"),
@@ -136,6 +140,10 @@ describe("rentcom", () => {
 
   it("reads income restriction from the empty array the site sends", () => {
     expect(listings[0]?.incomeRestricted).toBe(false);
+  });
+
+  it("leaves priceBasis null, because rent.com never states the rent basis", () => {
+    for (const listing of listings) expect(listing.priceBasis).toBeUndefined();
   });
 
   it("throws SourceLayoutError when __NEXT_DATA__ is missing", () => {
@@ -216,6 +224,10 @@ describe("zumper", () => {
     );
   });
 
+  it("leaves priceBasis null, because Zumper never states the rent basis", () => {
+    for (const listing of listings) expect(listing.priceBasis).toBeUndefined();
+  });
+
   it("throws SourceLayoutError when the preloaded state is missing", () => {
     expect(() => parseZumperSearch("<html></html>")).toThrow(SourceLayoutError);
   });
@@ -275,6 +287,10 @@ describe("redfin", () => {
     const restricted = listings.find((l) => l.incomeRestricted === true);
     expect(restricted?.title).toBe("Penn Square I");
     expect(restricted?.seniorHousing).toBe(false);
+  });
+
+  it("leaves priceBasis null, because Redfin never states the rent basis", () => {
+    for (const listing of listings) expect(listing.priceBasis).toBeUndefined();
   });
 
   it("throws SourceLayoutError when homes is missing", () => {

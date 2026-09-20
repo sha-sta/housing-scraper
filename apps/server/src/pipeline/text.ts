@@ -1,4 +1,4 @@
-import { AMENITIES, type Amenity, type AmenityMap, type PropertyType } from "@housing/shared";
+import { AMENITIES, type Amenity, type AmenityMap, type PriceBasis, type PropertyType } from "@housing/shared";
 
 // Listing sites bury the facts in prose. Everything here reads that prose and nothing else, so it
 // stays pure and testable. Patterns are deliberately conservative: a wrong amenity is worse than a
@@ -143,6 +143,30 @@ const SENIOR_HOUSING =
 
 const EMAIL_PATTERN = /[a-z0-9._%+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+/gi;
 const PHONE_PATTERN = /(?<![$\d])(?:\+?1[\s.-]?)?\(?([2-9]\d{2})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})(?!\d)/g;
+
+// Student row homes are routinely advertised by the room. Reading that wrong turns an $850 room
+// into an $850 house and buries the listings this app exists to find.
+const PER_ROOM =
+  /per\s*room|per\s*bedroom|per\s*bed\b|per\s*person|\/\s*room|\/\s*bedroom|\/\s*bed\b|each\s*room|\d+\s*bedrooms?\s*available|rooms?\s*available/i;
+
+/** Below this per bedroom, a multi bedroom listing is quoting one room, not the building. */
+export const ROOM_PRICE_CEILING = 450;
+
+export function inferPriceBasis(text: string, beds: number | null, price: number | null): PriceBasis {
+  if (PER_ROOM.test(text)) return "room";
+  if (beds !== null && beds >= 2 && price !== null && price / beds < ROOM_PRICE_CEILING) return "room";
+  return "unit";
+}
+
+const NON_HOUSING = /parking\s*spot|parking\s*space|\bgarage\b|storage\s*unit|secure\s*parking/i;
+// "rowhome" and "townhouse" carry "home" and "house", which is what keeps them out of this net.
+const HOUSING_WORDS = /bedroom|apartment|house|home/i;
+
+/** A parking spot is not a place to live. Only bedroom-less rows are ever considered. */
+export function isNonHousing(title: string, beds: number | null): boolean {
+  if (beds !== null) return false;
+  return NON_HOUSING.test(title) && !HOUSING_WORDS.test(title);
+}
 
 export function detectIncomeRestricted(text: string): boolean {
   return INCOME_RESTRICTED.test(text);

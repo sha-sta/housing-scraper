@@ -4,7 +4,7 @@ import type { EventBus } from "../api/events.ts";
 import type { Repos, StoredSource } from "../db/repo/index.ts";
 import { newId } from "../ids.ts";
 import type { Logger } from "../log.ts";
-import { evaluate } from "../match/evaluate.ts";
+import { evaluate, wholeUnitRent } from "../match/evaluate.ts";
 import { reevaluateProfile } from "../match/reevaluate.ts";
 import type { Router } from "../match/routing.ts";
 import type { Notifier } from "../notify/notifier.ts";
@@ -14,7 +14,7 @@ import { findDuplicate, type DedupeCandidate } from "./dedupe.ts";
 import type { Geocoder } from "./geocode.ts";
 import { normalize, type NormalizedListing } from "./normalize.ts";
 import { computeScamSignals, descriptionKey } from "./scam.ts";
-import { addressKey } from "./text.ts";
+import { addressKey, isNonHousing } from "./text.ts";
 
 /** Missed successful runs of every source before a listing is called gone. */
 export const MISSED_RUNS_BEFORE_GONE = 3;
@@ -52,6 +52,8 @@ export interface PipelineOptions {
   router: Router;
   log: Logger;
   pushContext(): PushContext;
+  /** True for sources where anyone can post. Only those get the comparison scam signals. */
+  peerPosted(sourceId: string): boolean;
 }
 
 interface Processed {
@@ -205,16 +207,45 @@ export function createPipeline(options: PipelineOptions): Pipeline {
             (l) => descriptionKey(l.description) === sameText && addressKey(l.address) !== normalized.addressKey,
           );
 
-    const comparablePrices = active
-      .filter((l) => l.beds === normalized.beds && l.price !== null && l.id !== existingLink?.listingId)
-      .map((l) => l.price ?? 0);
+    const duplicate =
+      existingLink !== null
+        ? null
+        : findDuplicate(
+            {
+              id: "",
+              addressKey: normalized.addressKey,
+              lat: normalized.lat,
+              lon: normalized.lon,
+              beds: normalized.beds,
+              bedsMax: normalized.bedsMax,
+              price: normalized.price,
+            },
+            candidates,
+          );
+
+    // The signals belong to whoever posted the listing first, not to whoever reposted it.
+    const primaryId = existingLink?.listingId ?? duplicate?.id ?? null;
+    const primarySourceId =
+      primaryId === null
+        ? normalized.sourceId
+        : (repos.listings.get(primaryId)?.sources[0]?.sourceId ?? normalized.sourceId);
+
+    const monthlyTotal =
+      normalized.price === null
+        ? null
+        : normalized.priceBasis === "room" && normalized.beds !== null
+          ? normalized.price * normalized.beds
+          : normalized.price;
+
+    const comparablePrices = comparableRents(active, normalized.beds, primaryId);
 
     const scamSignals = computeScamSignals(
       {
-        price: normalized.price,
+        monthlyTotal,
         address: normalized.address,
         photos: normalized.photos,
         text: [normalized.title, normalized.description ?? ""].join("\n"),
+        peerPosted: options.peerPosted(primarySourceId),
       },
       { comparablePrices, textSeenAtAnotherAddress: textElsewhere },
     );
@@ -224,6 +255,7 @@ export function createPipeline(options: PipelineOptions): Pipeline {
       description: normalized.description,
       price: normalized.price,
       priceMax: normalized.priceMax,
+      priceBasis: normalized.priceBasis,
       beds: normalized.beds,
       bedsMax: normalized.bedsMax,
       baths: normalized.baths,
@@ -267,19 +299,6 @@ export function createPipeline(options: PipelineOptions): Pipeline {
         return { listing: updated, isNew: false, priceDropped, backOnMarket };
       }
     }
-
-    const duplicate = findDuplicate(
-      {
-        id: "",
-        addressKey: normalized.addressKey,
-        lat: normalized.lat,
-        lon: normalized.lon,
-        beds: normalized.beds,
-        bedsMax: normalized.bedsMax,
-        price: normalized.price,
-      },
-      candidates,
-    );
 
     if (duplicate !== null) {
       const stored = repos.listings.get(duplicate.id);
@@ -351,6 +370,10 @@ export function createPipeline(options: PipelineOptions): Pipeline {
         const parsed = RawListingSchema.safeParse(item);
         if (!parsed.success) {
           log.warn("dropped an invalid raw listing", { sourceId: source.id, error: parsed.error.message });
+          continue;
+        }
+        if (isNonHousing(parsed.data.title, parsed.data.beds)) {
+          log.debug("dropped a listing that is not housing", { sourceId: source.id, title: parsed.data.title });
           continue;
         }
         valid.push(parsed.data);
@@ -447,4 +470,18 @@ export function createPipeline(options: PipelineOptions): Pipeline {
       return result.matched;
     },
   };
+}
+
+/**
+ * Whole-unit rents worth comparing against. Income restricted stock, senior housing, and single
+ * rooms sit on a different price ladder, so including them would drag the median down for everyone.
+ */
+export function comparableRents(active: Listing[], beds: number | null, excludeId: string | null): number[] {
+  return active
+    .filter(
+      (l) =>
+        l.id !== excludeId && l.beds === beds && !l.incomeRestricted && !l.seniorHousing && l.propertyType !== "room",
+    )
+    .map((l) => wholeUnitRent(l))
+    .filter((rent): rent is number => rent !== null);
 }

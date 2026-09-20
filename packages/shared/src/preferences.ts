@@ -217,6 +217,8 @@ export const MatchSchema = z.object({
   rejectedBy: z.array(FilterReasonSchema),
   score: z.number(),
   breakdown: ScoreBreakdownSchema,
+  // Rent for the whole unit as the engine priced it. For a per-room listing this is price times bedrooms.
+  monthlyTotal: z.number().nullable().default(null),
   pricePerPerson: z.number().nullable(),
   walkMinutes: z.number().nullable(),
   distanceMiles: z.number().nullable(),

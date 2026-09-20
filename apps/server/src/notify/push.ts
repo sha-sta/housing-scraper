@@ -41,11 +41,19 @@ export function matchTitle(listing: Listing): string {
   return shorten(title, MAX_TITLE_CHARS);
 }
 
+/** A per-room price needs all three numbers, or the reader has to do the arithmetic themselves. */
+export function priceLine(listing: Listing, match: Match): string | null {
+  if (listing.priceBasis === "room" && listing.price !== null && match.monthlyTotal !== null) {
+    const each = match.pricePerPerson === null ? null : `${money(match.pricePerPerson)} each`;
+    return [`${money(listing.price)} per room`, `about ${money(match.monthlyTotal)} total`, each]
+      .filter((part): part is string => part !== null)
+      .join(", ");
+  }
+  return match.pricePerPerson === null ? null : `${money(match.pricePerPerson)} per person`;
+}
+
 export function matchBody(listing: Listing, match: Match): string {
-  const first = [
-    `Score ${Math.round(match.score)}`,
-    match.pricePerPerson === null ? null : `${money(match.pricePerPerson)} per person`,
-  ]
+  const first = [`Score ${Math.round(match.score)}`, priceLine(listing, match)]
     .filter((part): part is string => part !== null)
     .join(", ");
 

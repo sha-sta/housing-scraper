@@ -255,6 +255,7 @@ export const facebookGroupsAdapter: SourceAdapter = {
   homepage: `${ORIGIN}/groups`,
   defaultIntervalSec: 1800,
   defaultEnabled: false,
+  peerPosted: true,
   defaultConfig: { groups: [] },
 
   async needsSetup(ctx) {

@@ -15,14 +15,20 @@ const FAR_BELOW_RATIO = 0.5;
 const MIN_COMPARABLES = 5;
 
 export interface ScamInput {
-  price: number | null;
+  /** Whole-unit rent, so a per-room price is not compared against whole houses. */
+  monthlyTotal: number | null;
   address: string | null;
   photos: string[];
   text: string;
+  /**
+   * True when anyone can post on the listing's primary source. A managed feed with no photos is
+   * how that feed works, not a warning sign, so the comparison signals stay off for it.
+   */
+  peerPosted: boolean;
 }
 
 export interface ScamContext {
-  /** Prices of active listings with the same bedroom count. */
+  /** Whole-unit rents of comparable active listings with the same bedroom count. */
   comparablePrices: number[];
   /** True when another stored listing has the same description at a different address. */
   textSeenAtAnotherAddress: boolean;
@@ -39,14 +45,14 @@ function median(values: number[]): number {
 export function computeScamSignals(input: ScamInput, context: ScamContext): ScamSignal[] {
   const signals: ScamSignal[] = [];
 
-  if (input.price !== null && context.comparablePrices.length >= MIN_COMPARABLES) {
-    if (input.price < median(context.comparablePrices) * FAR_BELOW_RATIO) signals.push("priceFarBelowArea");
+  if (input.peerPosted && input.monthlyTotal !== null && context.comparablePrices.length >= MIN_COMPARABLES) {
+    if (input.monthlyTotal < median(context.comparablePrices) * FAR_BELOW_RATIO) signals.push("priceFarBelowArea");
   }
   if (WIRE_OR_GIFT_CARD.test(input.text)) signals.push("wireOrGiftCardLanguage");
   if (OUT_OF_COUNTRY.test(input.text)) signals.push("landlordOutOfCountry");
   if (DEPOSIT_BEFORE_VIEWING.test(input.text)) signals.push("depositBeforeViewing");
   if (context.textSeenAtAnotherAddress) signals.push("duplicateTextDifferentAddress");
-  if (input.address === null && input.photos.length === 0) signals.push("noAddressNoPhotos");
+  if (input.peerPosted && input.address === null && input.photos.length === 0) signals.push("noAddressNoPhotos");
 
   return signals;
 }

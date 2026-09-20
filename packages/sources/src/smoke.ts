@@ -49,6 +49,8 @@ const COLUMNS: Column[] = [
   { label: "price", has: (l) => typeof l.price === "number" },
   { label: "beds", has: (l) => typeof l.beds === "number" },
   { label: "bedsMax", has: (l) => typeof l.bedsMax === "number" },
+  // Share of rows where the source itself states whether the rent is per unit or per bedroom.
+  { label: "basis", has: (l) => l.priceBasis === "unit" || l.priceBasis === "room" },
   { label: "address", has: (l) => typeof l.address === "string" && l.address.length > 0 },
   { label: "lat/lon", has: (l) => typeof l.lat === "number" && typeof l.lon === "number" },
   { label: "photos", has: (l) => Array.isArray(l.photos) && l.photos.length > 0 },

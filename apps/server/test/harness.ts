@@ -35,9 +35,15 @@ export interface HarnessOptions {
   adapters?: SourceAdapter[];
   smtp?: boolean;
   dailyBudget?: number;
+  /** Source ids to treat as open boards. Defaults to the fixture sources used across the suite. */
+  peerPostedSources?: string[];
 }
 
 export function createHarness(options: HarnessOptions = {}): Harness {
+  const peerPostedIds = new Set([
+    ...(options.adapters ?? []).filter((a) => a.peerPosted === true).map((a) => a.id),
+    ...(options.peerPostedSources ?? ["fake", "other"]),
+  ]);
   const db = openTempDb();
   const repos = db.repos;
   const bus = createEventBus();
@@ -90,6 +96,7 @@ export function createHarness(options: HarnessOptions = {}): Harness {
     router: { walkMinutes: async () => null },
     log: silentLogger(),
     pushContext,
+    peerPosted: (sourceId) => peerPostedIds.has(sourceId),
   });
 
   return {

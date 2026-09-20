@@ -38,6 +38,13 @@ export function render(template: string, variables: Record<string, string>): str
     .trim();
 }
 
+/** Says what the number means, so an email never offers a per-room rent as the whole rent. */
+function priceText(listing: Listing): string {
+  if (listing.price === null) return "";
+  const amount = `$${Math.round(listing.price).toLocaleString("en-US")}`;
+  return listing.priceBasis === "room" ? `${amount} per room` : `${amount} a month`;
+}
+
 function formatDate(iso: string | null): string {
   if (iso === null) return "";
   const parsed = new Date(`${iso}T00:00:00Z`);
@@ -51,6 +58,7 @@ export function templateVariables(listing: Listing, profile: Profile, identity: 
     "listing.title": listing.title,
     "listing.address": listing.address ?? "",
     "listing.price": listing.price === null ? "" : `$${Math.round(listing.price).toLocaleString("en-US")}`,
+    "listing.priceText": priceText(listing),
     "listing.beds": listing.beds === null ? "" : String(listing.beds),
     "listing.url": listing.sources[0]?.url ?? "",
     "listing.availableDate": formatDate(listing.availableDate),

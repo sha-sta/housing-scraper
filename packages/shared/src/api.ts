@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ListingSchema } from "./listing.ts";
-import { MatchSchema } from "./preferences.ts";
+import { FilterReasonSchema, MatchSchema } from "./preferences.ts";
 
 /** Where a listing sits in the hunt. Global per listing, since one instance serves one household. */
 export const STAGES = [
@@ -195,6 +195,18 @@ export const SettingsPatchSchema = SettingsSchema.pick({
   dashboardUrl: true,
 }).partial();
 
+/** Response of POST /profiles/preview. */
+export const ProfilePreviewSchema = z.object({
+  matched: z.number(),
+  total: z.number(),
+  topRejectReasons: z.array(z.tuple([FilterReasonSchema, z.number()])),
+});
+export type ProfilePreview = z.infer<typeof ProfilePreviewSchema>;
+
+/** Response of POST /test/ntfy and POST /test/smtp. */
+export const TestResultSchema = z.object({ ok: z.boolean(), error: z.string().optional() });
+export type TestResult = z.infer<typeof TestResultSchema>;
+
 /** Server-sent events on GET /api/events. The dashboard refetches the affected query on each. */
 export const ServerEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("listing.upserted"), listingId: z.string(), isNew: z.boolean() }),
@@ -221,7 +233,7 @@ export type Stats = z.infer<typeof StatsSchema>;
  * REST surface, all under /api. JSON in and out. Errors are { error: string } with a 4xx or 5xx status.
  *
  * GET    /health                     -> { ok: true, version }
- * GET    /stats                      -> Stats
+ * GET    /stats                      -> Stats                        (byStage always carries all 8 stages)
  * GET    /campuses                   -> CampusPreset[]
  * GET    /settings                   -> Settings
  * PATCH  /settings                   SettingsPatch -> Settings
@@ -230,7 +242,7 @@ export type Stats = z.infer<typeof StatsSchema>;
  * POST   /profiles                   ProfileWrite -> Profile
  * PUT    /profiles/:id               ProfileWrite -> Profile        (re-evaluates every active listing)
  * DELETE /profiles/:id               -> 204
- * POST   /profiles/preview           ProfileWrite -> { matched: number, total: number, topRejectReasons: [FilterReason, number][] }
+ * POST   /profiles/preview           ProfileWrite -> ProfilePreview
  *
  * GET    /listings                   ListingQuery -> ListingPage
  * GET    /listings/:id               -> ListingView
@@ -256,8 +268,8 @@ export type Stats = z.infer<typeof StatsSchema>;
  * PATCH  /sources/:id                SourcePatch -> SourceStatus
  * POST   /sources/:id/run            -> SourceStatus                 (run now)
  *
- * POST   /test/ntfy                  { profileId } -> { ok: boolean, error?: string }
- * POST   /test/smtp                  -> { ok: boolean, error?: string }
+ * POST   /test/ntfy                  { profileId } -> TestResult
+ * POST   /test/smtp                  -> TestResult
  *
  * GET    /events                     text/event-stream of ServerEvent
  */

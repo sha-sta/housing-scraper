@@ -107,6 +107,7 @@ const PlacardSchema = z.object({
   lastUpdated: z.string().nullable().optional(),
   floorPlanSummary: z
     .object({
+      hasPerBedPricing: z.boolean().nullable().optional(),
       matching: z
         .object({
           beds: z.object({ low: z.number().nullable(), high: z.number().nullable() }).partial().optional(),
@@ -114,6 +115,7 @@ const PlacardSchema = z.object({
         })
         .optional(),
     })
+    .loose()
     .optional(),
   geography: z.object({
     streetAddress: z.string().nullable().optional(),
@@ -176,6 +178,15 @@ function mediaPhotos(media: MediaBlock): string[] {
   return [...new Set(sources)].map(absoluteUrl);
 }
 
+/**
+ * Off Campus Partners states the rent basis on every listing. hasPerBedPricing true means the
+ * price is per bedroom, which is how most student row homes near Homewood are advertised.
+ */
+function priceBasisFrom(hasPerBedPricing: boolean | null | undefined): "unit" | "room" | null {
+  if (typeof hasPerBedPricing !== "boolean") return null;
+  return hasPerBedPricing ? "room" : "unit";
+}
+
 export function placardToListing(placard: Placard): RawListingInput {
   const matching = placard.floorPlanSummary?.matching;
   const price = matching?.price;
@@ -189,6 +200,7 @@ export function placardToListing(placard: Placard): RawListingInput {
     title: placard.name,
     price: price?.callForPrice ? null : positive(price?.low),
     priceMax: price?.callForPrice ? null : positive(price?.high),
+    priceBasis: priceBasisFrom(placard.floorPlanSummary?.hasPerBedPricing),
     beds: bedCount(matching?.beds?.low),
     bedsMax: rangeTop(matching?.beds?.low, matching?.beds?.high),
     isSublet: placard.isSublet ?? false,
@@ -258,6 +270,7 @@ const DetailBodySchema = z.object({
     incomeRestrictions: z.array(z.unknown()).nullable().optional(),
     floorPlanSummary: z
       .object({
+        hasPerBedPricing: z.boolean().nullable().optional(),
         bathrooms: z.object({ low: z.number().nullable().optional() }).loose().optional(),
         bedrooms: z
           .object({
@@ -279,6 +292,7 @@ const DetailBodySchema = z.object({
             baths: z.number().nullable().optional(),
             squareFeet: z.string().nullable().optional(),
             priceLow: z.number().nullable().optional(),
+            perBedPricing: z.boolean().nullable().optional(),
             availableDate: z.string().nullable().optional(),
           })
           .loose(),
@@ -342,6 +356,11 @@ export function parseJhuDetailBody(payload: unknown, base: RawListingInput): Raw
       ? bedCount(summary?.bedrooms?.low)
       : (base.beds ?? positive(summary?.bedrooms?.low) ?? positive(matchingPlan?.beds)),
     bedsMax: buildingRange,
+    priceBasis:
+      priceBasisFrom(summary?.hasPerBedPricing) ??
+      priceBasisFrom(matchingPlan?.perBedPricing) ??
+      base.priceBasis ??
+      null,
     incomeRestricted: data.incomeRestrictions ? data.incomeRestrictions.length > 0 : null,
     baths: positive(summary?.bathrooms?.low) ?? positive(matchingPlan?.baths),
     sqft:

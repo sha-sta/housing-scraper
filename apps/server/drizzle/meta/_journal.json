@@ -8,6 +8,13 @@
       "when": 1789884609692,
       "tag": "0000_many_silk_fever",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789885897625,
+      "tag": "0001_mean_jubilee",
+      "breakpoints": true
     }
   ]
 }
