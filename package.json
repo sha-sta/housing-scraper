@@ -1,0 +1,18 @@
+{
+  "name": "housing-scraper",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Self-hosted rental watcher for JHU students: polls listing sites, scores matches, pushes to ntfy, stages outreach emails.",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "packageManager": "pnpm@11.22.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "start": "pnpm --filter @housing/server start",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "e2e": "pnpm --filter @housing/web e2e"
+  }
+}
