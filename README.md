@@ -34,6 +34,8 @@ pnpm build
 pnpm start
 ```
 
+To use it like an app, open http://localhost:4747 in Safari and choose File, then Add to Dock. In Chrome, click the install button at the right end of the address bar. The dashboard then has its own window and a Dock icon that shows the number of unread notifications.
+
 The setup page is http://localhost:4747. A wizard asks for your campus, your name and school email, and your first profile. Then it shows a QR code. Install the ntfy app on your phone, scan the code, and press Test push in the wizard. Your phone should buzz.
 
 The first check of each site finds every listing that already exists. The app does not push those one by one. It sends a single summary push, and the listings wait for you in the dashboard. After that, only new listings push.

@@ -96,3 +96,5 @@ done
 
 open "http://localhost:$PORT"
 say "Done. The setup page is open in your browser. Run this same line again any time to update."
+printf 'To get a Dock icon, open http://localhost:%s in Safari and choose File, then Add to Dock.\n' "$PORT"
+printf 'In Chrome, click the install button at the right end of the address bar.\n'

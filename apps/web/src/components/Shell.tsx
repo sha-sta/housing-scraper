@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { useLive } from "../lib/live.tsx";
 import { useStats } from "../lib/queries.ts";
@@ -69,6 +70,12 @@ function UnreadBadge({ count }: { count: number }) {
 export function Shell() {
   const { data: stats } = useStats();
   const unread = stats?.unreadNotifications ?? 0;
+
+  // Shows the unread count on the Dock icon when the dashboard is installed as an app
+  useEffect(() => {
+    if (!("setAppBadge" in navigator)) return;
+    void (unread > 0 ? navigator.setAppBadge(unread) : navigator.clearAppBadge());
+  }, [unread]);
   const location = useLocation();
 
   return (
