@@ -1,0 +1,12 @@
+# Create the env file first: cp .env.example .env
+# On a public server, set DASHBOARD_PASSWORD in .env before starting.
+services:
+  watcher:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "4747:4747"
+    volumes:
+      - ./data:/data
+      # The app writes its generated secrets back to this file on first run
+      - ./.env:/app/.env
