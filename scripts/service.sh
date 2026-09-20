@@ -14,6 +14,10 @@ usage() {
 }
 
 install() {
+  # The service does not read your shell profile, so it records where node and pnpm are right now
+  command -v node >/dev/null || { echo "node is not on PATH"; exit 1; }
+  command -v pnpm >/dev/null || { echo "pnpm is not on PATH"; exit 1; }
+  SERVICE_PATH="$(dirname "$(command -v node)"):$(dirname "$(command -v pnpm)"):/usr/bin:/bin:/usr/sbin:/sbin"
   mkdir -p "$LOG_DIR" "$(dirname "$PLIST")"
   cat > "$PLIST" <<PLIST_EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -23,10 +27,15 @@ install() {
   <key>Label</key><string>$LABEL</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/bin/zsh</string>
-    <string>-lc</string>
+    <string>/bin/sh</string>
+    <string>-c</string>
     <string>cd "$REPO" &amp;&amp; exec caffeinate -is pnpm start</string>
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>$SERVICE_PATH</string>
+    <key>PORT</key><string>${PORT:-4747}</string>
+  </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>ThrottleInterval</key><integer>30</integer>

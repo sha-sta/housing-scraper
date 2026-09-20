@@ -15,7 +15,15 @@ You run it on your own computer. Nothing is shared with anyone else, and every J
 
 ## 2. Set it up
 
-You need [Node](https://nodejs.org) 24 or newer and [pnpm](https://pnpm.io).
+On a Mac, open the Terminal app, paste this line, and press Return.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/sha-sta/housing-scraper/main/scripts/install.sh | sh
+```
+
+The installer needs no password. It downloads its own copy of Node into `~/.housing-scraper`, puts the app in `~/housing-scraper`, starts it in the background, and opens the setup page. It takes a few minutes. Paste the same line again later to update. Your listings and settings are kept.
+
+If you would like to run it from a clone instead, you need [Node](https://nodejs.org) 24 or newer and [pnpm](https://pnpm.io).
 
 ```sh
 git clone https://github.com/sha-sta/housing-scraper.git
@@ -26,7 +34,7 @@ pnpm build
 pnpm start
 ```
 
-Open http://localhost:4747. A setup wizard asks for your campus, your name and school email, and your first profile. Then it shows a QR code. Install the ntfy app on your phone, scan the code, and press Test push in the wizard. Your phone should buzz.
+The setup page is http://localhost:4747. A wizard asks for your campus, your name and school email, and your first profile. Then it shows a QR code. Install the ntfy app on your phone, scan the code, and press Test push in the wizard. Your phone should buzz.
 
 The first check of each site finds every listing that already exists. The app does not push those one by one. It sends a single summary push, and the listings wait for you in the dashboard. After that, only new listings push.
 
@@ -100,7 +108,7 @@ The app never sends anything by itself. If you would like it to send email direc
 
 The app only checks sites while it is running.
 
-On a Mac, install it as a background service that starts at login and restarts if it stops.
+The one-line installer already set this up. From a clone on a Mac, install it as a background service that starts at login and restarts if it stops.
 
 ```sh
 scripts/service.sh install     # also: uninstall, status, logs
@@ -117,7 +125,9 @@ docker compose up -d
 
 Set `DASHBOARD_PASSWORD` in `.env` first if the server is reachable from the internet.
 
-To open the dashboard from your phone, install [Tailscale](https://tailscale.com) on the computer and the phone, then enter the computer's Tailscale address as the dashboard URL in Settings. The push buttons work without this step, because they go through ntfy and not through the dashboard.
+Pushes work on your phone with no extra setup. Tapping one opens the listing's own page, and the buttons go through ntfy and your mail app.
+
+The dashboard itself only answers on the computer it runs on. To open it from your phone, install [Tailscale](https://tailscale.com/download) on the computer and on the phone, and sign in to both with the same account. Tailscale is a free app that connects your own devices privately, and it works on campus Wi-Fi and on cellular. The app notices Tailscale within 30 seconds. Settings then shows an Open on your phone card with a QR code and one button that makes pushes link to the dashboard.
 
 ## 8. Limits you should know about
 
