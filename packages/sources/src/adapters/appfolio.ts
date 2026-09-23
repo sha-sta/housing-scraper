@@ -69,6 +69,9 @@ export function parseAppfolioListings(html: string, subdomain: string): RawListi
   const $ = cheerio.load(html);
   const markers = parseAppfolioMarkers(html);
   const origin = `https://${subdomain}.appfolio.com`;
+  // The page title is "<Company> Listings". The subdomain is the fallback, so the dashboard
+  // never shows an empty landlord.
+  const company = collapseWhitespace($("title").text()).replace(/\s+listings$/i, "") || subdomain;
   const listings: RawListingInput[] = [];
 
   $(".js-listing-item").each((_, el) => {
@@ -111,7 +114,7 @@ export function parseAppfolioListings(html: string, subdomain: string): RawListi
       photos: [marker?.default_photo_url, item.find(".js-listing-image").attr("data-original")]
         .filter((src): src is string => typeof src === "string" && src.startsWith("http")),
       amenities: amenitiesFromLabels([amenityText, petPolicy, description ?? ""]),
-      contact: { company: subdomain, formUrl: `${origin}${path}` },
+      contact: { company, formUrl: `${origin}${path}` },
     });
   });
 

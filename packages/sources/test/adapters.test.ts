@@ -2,6 +2,7 @@ import { RawListingSchema } from "@housing/shared";
 import { describe, expect, it } from "vitest";
 import { parseApartmentListSearch } from "../src/adapters/apartmentlist.ts";
 import { parseAppfolioListings, parseAppfolioMarkers } from "../src/adapters/appfolio.ts";
+import { stripStatusPrefix } from "../src/adapters/redfin.ts";
 import {
   cardsToListings,
   parseMarketplaceCards,
@@ -60,6 +61,17 @@ describe("adapter registry", () => {
   });
 });
 
+describe("redfin descriptions", () => {
+  it("drops the Property Status prefix and keeps everything else", () => {
+    expect(stripStatusPrefix("Property Status: Active Ideal Student Housing near campus.")).toBe(
+      "Ideal Student Housing near campus.",
+    );
+    expect(stripStatusPrefix("Sunny 4 bedroom.")).toBe("Sunny 4 bedroom.");
+    expect(stripStatusPrefix("Property Status: Active")).toBeNull();
+    expect(stripStatusPrefix(null)).toBeNull();
+  });
+});
+
 describe("appfolio", () => {
   const html = fixture("appfolio", "listings.html");
   const listings = parseAppfolioListings(html, "americanmanagement");
@@ -70,6 +82,11 @@ describe("appfolio", () => {
     expect(listings).toHaveLength(3);
     expect(listings[0]?.lat).toBeCloseTo(39.325762, 5);
     expect(listings[0]?.lon).toBeCloseTo(-76.6144061, 5);
+  });
+
+  it("names the landlord from the page title, not the subdomain", () => {
+    expect(listings[0]?.contact?.company).toBe("American Management");
+    expect(parseAppfolioListings("<html><title></title><body></body></html>", "acme")).toEqual([]);
   });
 
   it("namespaces the listing id by subdomain so two landlords never collide", () => {

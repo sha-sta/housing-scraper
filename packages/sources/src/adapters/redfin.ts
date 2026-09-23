@@ -111,6 +111,12 @@ export function redfinPhotoUrls(
   return urls;
 }
 
+/** Redfin prefixes many descriptions with "Property Status: Active", which is noise on a card. */
+export function stripStatusPrefix(description: string | null | undefined): string | null {
+  if (!description) return null;
+  return description.replace(/^\s*property status:\s*[a-z]+\s*/i, "").trim() || null;
+}
+
 export function parseRedfinRentals(payload: unknown): RawListingInput[] {
   const parsed = decode(RentalsSchema, payload, "redfin rentals");
 
@@ -125,7 +131,7 @@ export function parseRedfinRentals(payload: unknown): RawListingInput[] {
       sourceListingId: rental.rentalId,
       url,
       title,
-      description: rental.description || null,
+      description: stripStatusPrefix(rental.description),
       price: positive(rental.rentPriceRange?.min),
       priceMax: positive(rental.rentPriceRange?.max),
       beds: bedCount(rental.bedRange?.min),
