@@ -39,12 +39,18 @@ export function rejectReason(reason: FilterReason): string {
   return REASONS[reason];
 }
 
-/** The one line shown on a rejected row. Extra reasons are counted, not listed. */
-export function rejectSummary(reasons: FilterReason[]): string {
-  const [first, ...rest] = reasons;
-  if (!first) return "Rejected";
-  if (rest.length === 0) return rejectReason(first);
-  return `${rejectReason(first)}, and ${rest.length} more ${rest.length === 1 ? "reason" : "reasons"}`;
+/** Every reason, in plain words. A reader deciding what to loosen needs all of them. */
+export function rejectList(reasons: FilterReason[]): string {
+  if (reasons.length === 0) return "Rejected";
+  return reasons.map(rejectReason).join(", ");
+}
+
+/** The phone has one line to spare, so the tail becomes a count. */
+export function rejectListShort(reasons: FilterReason[], limit = 3): string {
+  if (reasons.length === 0) return "Rejected";
+  if (reasons.length <= limit) return rejectList(reasons);
+  const shown = reasons.slice(0, limit).map(rejectReason).join(", ");
+  return `${shown}, +${reasons.length - limit} more`;
 }
 
 /** The setting a reason points at, used to send the reader to the right editor section. */

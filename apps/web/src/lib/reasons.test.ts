@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FILTER_REASONS, type FilterReason } from "@housing/shared";
-import { reasonSection, rejectReason, rejectSummary } from "./reasons.ts";
+import { reasonSection, rejectList, rejectListShort, rejectReason } from "./reasons.ts";
 
 const EM_DASH = String.fromCharCode(0x2014);
 
@@ -39,22 +39,27 @@ describe("reject reasons", () => {
   });
 });
 
-describe("reject summary", () => {
-  it("prints one reason as itself", () => {
-    expect(rejectSummary(["priceOverMax"])).toBe("Costs more than your budget");
+describe("reject lists", () => {
+  it("names every reason on a wide screen", () => {
+    expect(rejectList(["priceOverMax"])).toBe("Costs more than your budget");
+    expect(rejectList(["priceOverMax", "tooFar", "noPhotos"])).toBe(
+      "Costs more than your budget, Longer walk than your maximum, No photos, and you require them",
+    );
   });
 
-  it("counts the rest instead of listing them", () => {
-    expect(rejectSummary(["priceOverMax", "tooFar"])).toBe(
-      "Costs more than your budget, and 1 more reason",
+  it("keeps three and counts the rest on a phone", () => {
+    const four: FilterReason[] = ["priceOverMax", "tooFar", "noPhotos", "suspectedScam"];
+    expect(rejectListShort(four)).toBe(
+      "Costs more than your budget, Longer walk than your maximum, No photos, and you require them, +1 more",
     );
-    expect(rejectSummary(["priceOverMax", "tooFar", "noPhotos"])).toBe(
-      "Costs more than your budget, and 2 more reasons",
+    expect(rejectListShort(["priceOverMax", "tooFar"])).toBe(
+      "Costs more than your budget, Longer walk than your maximum",
     );
   });
 
   it("has something to say when the list is empty", () => {
     const none: FilterReason[] = [];
-    expect(rejectSummary(none)).toBe("Rejected");
+    expect(rejectList(none)).toBe("Rejected");
+    expect(rejectListShort(none)).toBe("Rejected");
   });
 });

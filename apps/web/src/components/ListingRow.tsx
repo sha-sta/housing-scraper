@@ -1,7 +1,9 @@
 import { Link } from "react-router";
-import type { ListingView, Match, Profile } from "@housing/shared";
+import { AMENITIES, type ListingView, type Match, type Profile } from "@housing/shared";
 import {
   formatBaths,
+  amenityLabel,
+  excerpt,
   formatBedRange,
   formatDate,
   headlinePrice,
@@ -11,10 +13,13 @@ import {
   shortAddress,
   sourceLabel,
 } from "../lib/format.ts";
-import { rejectSummary } from "../lib/reasons.ts";
+import { rejectList, rejectListShort } from "../lib/reasons.ts";
 import { stageColor, stageLabel } from "../lib/stage.ts";
+import { ListingPhoto } from "./ListingPhoto.tsx";
 import { Chip, ScorePlate } from "./ui.tsx";
 import { IconHide, IconShow, IconStar } from "./icons.tsx";
+
+export const GONE_TITLE = "Missing from every source for 3 checks in a row";
 
 export function pickMatch(view: ListingView, profileId: string | null): Match | null {
   if (profileId) {
@@ -22,28 +27,6 @@ export function pickMatch(view: ListingView, profileId: string | null): Match | 
     if (exact) return exact;
   }
   return [...view.matches].sort((a, b) => b.score - a.score)[0] ?? null;
-}
-
-function Photo({ url, alt, dim }: { url: string | undefined; alt: string; dim: boolean }) {
-  if (!url) {
-    return (
-      <span
-        aria-hidden="true"
-        className="flex h-[84px] w-[64px] shrink-0 items-center justify-center rounded-[var(--radius-photo)] bg-surface-2 text-[11px] text-ink-3"
-      >
-        No photo
-      </span>
-    );
-  }
-  return (
-    <img
-      src={url}
-      alt={alt}
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      className={`h-[84px] w-[64px] shrink-0 rounded-[var(--radius-photo)] bg-surface-2 object-cover ${dim ? "opacity-55" : ""}`}
-    />
-  );
 }
 
 export function ListingRow({
@@ -67,6 +50,8 @@ export function ListingRow({
   const match = pickMatch(view, profileId);
   const rejected = match !== null && !match.matched;
   const spine = profile?.color ?? "var(--rule-strong)";
+  const blurb = listing.description ? excerpt(listing.description, 200) : "";
+  const perks = AMENITIES.filter((amenity) => listing.amenities[amenity] === true).slice(0, 4);
   const price = headlinePrice(
     listing.price,
     listing.priceMax,
@@ -105,7 +90,11 @@ export function ListingRow({
           )}
         </div>
 
-        <Photo url={listing.photos[0]} alt="" dim={rejected || listing.status === "gone"} />
+        <ListingPhoto
+          photos={listing.photos}
+          className="h-[84px] w-[64px] rounded-[var(--radius-photo)]"
+          dim={rejected || listing.status === "gone"}
+        />
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -134,7 +123,10 @@ export function ListingRow({
           </h3>
 
           {rejected && match ? (
-            <p className="mt-1 text-[12.5px] text-brick">{rejectSummary(match.rejectedBy)}</p>
+            <p className="mt-1 text-[12.5px] text-brick">
+              <span className="lg:hidden">{rejectListShort(match.rejectedBy)}</span>
+              <span className="hidden lg:inline">{rejectList(match.rejectedBy)}</span>
+            </p>
           ) : null}
 
           <div className="mt-2 flex items-center gap-2">
@@ -152,7 +144,11 @@ export function ListingRow({
                 {relativeTime(listing.firstSeenAt)}
               </span>
               {listing.scamSignals.length > 0 ? <Chip tone="brick">Possible scam</Chip> : null}
-              {listing.status === "gone" ? <Chip tone="quiet">Off the market</Chip> : null}
+              {listing.status === "gone" ? (
+                <Chip tone="quiet" title={GONE_TITLE}>
+                  Not seen lately
+                </Chip>
+              ) : null}
               {showRestrictions && listing.incomeRestricted ? (
                 <Chip tone="quiet">Income restricted</Chip>
               ) : null}
@@ -192,6 +188,22 @@ export function ListingRow({
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Desktop has two thirds of the row spare, so it earns a summary instead of whitespace. */}
+        <div className="hidden min-w-0 shrink-0 basis-[38%] flex-col gap-2 pt-0.5 lg:flex">
+          {blurb ? (
+            <p className="line-clamp-2 text-[12.5px] leading-snug text-ink-2">{blurb}</p>
+          ) : null}
+          {perks.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {perks.map((amenity) => (
+                <Chip key={amenity} tone="quiet">
+                  {amenityLabel(amenity)}
+                </Chip>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </article>

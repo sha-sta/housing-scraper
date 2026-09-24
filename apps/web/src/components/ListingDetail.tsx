@@ -9,7 +9,6 @@ import {
 } from "@housing/shared";
 import {
   amenityLabel,
-  formatAvailable,
   formatBaths,
   formatBedRange,
   formatDate,
@@ -32,7 +31,7 @@ import {
 } from "../lib/format.ts";
 import { rejectReason } from "../lib/reasons.ts";
 import { stageColor, stageLabel } from "../lib/stage.ts";
-import { pickMatch } from "./ListingRow.tsx";
+import { GONE_TITLE, pickMatch } from "./ListingRow.tsx";
 import { DraftPanel } from "./DraftPanel.tsx";
 import { Chip, Meter, ScorePlate } from "./ui.tsx";
 import { IconExternal, IconHide, IconMail, IconPhone, IconShow, IconStar, IconWarn } from "./icons.tsx";
@@ -48,13 +47,17 @@ function Fact({ label, value }: { label: string; value: string }) {
 
 function Gallery({ photos, title }: { photos: string[]; title: string }) {
   const [index, setIndex] = useState(0);
-  if (photos.length === 0) {
+  const [failed, setFailed] = useState<string[]>([]);
+  const usable = photos.filter((url) => !failed.includes(url));
+
+  if (usable.length === 0) {
     return (
       <div className="flex h-[168px] items-center justify-center bg-surface-2 text-[13px] text-ink-3">
         No photos on this listing
       </div>
     );
   }
+
   return (
     <div className="relative">
       <div
@@ -65,20 +68,24 @@ function Gallery({ photos, title }: { photos: string[]; title: string }) {
         }}
         aria-label={`Photos of ${title}`}
       >
-        {photos.map((url, i) => (
+        {usable.map((url, i) => (
           <img
             key={url}
             src={url}
-            alt={`Photo ${i + 1} of ${photos.length}`}
+            alt={`Photo ${i + 1} of ${usable.length}`}
             referrerPolicy="no-referrer"
             loading={i === 0 ? "eager" : "lazy"}
+            onError={() => setFailed((previous) => [...previous, url])}
             className="h-[220px] w-full shrink-0 snap-start bg-surface-2 object-cover lg:h-[260px]"
           />
         ))}
       </div>
-      {photos.length > 1 ? (
-        <span className="num absolute bottom-2 right-2 rounded-full bg-shade px-2 py-0.5 text-[11.5px] text-white">
-          {Math.min(index + 1, photos.length)} of {photos.length}
+      {usable.length > 1 ? (
+        <span
+          className="num absolute bottom-2 right-2 rounded-full bg-shade px-2 py-0.5 text-[11.5px] text-white"
+          data-testid="gallery-count"
+        >
+          {Math.min(index + 1, usable.length)} of {usable.length}
         </span>
       ) : null}
     </div>
@@ -144,6 +151,32 @@ export function ListingDetail({
   useEffect(() => setNotes(state.notes), [state.notes]);
 
   const presentAmenities = AMENITIES.filter((amenity) => listing.amenities[amenity] === true);
+  const facts: { label: string; value: string }[] = [];
+  const missing: string[] = [];
+  const fact = (label: string, value: string | null, missingName: string) => {
+    if (value === null) missing.push(missingName);
+    else facts.push({ label, value });
+  };
+
+  fact("Bedrooms", listing.beds === null ? null : formatBedRange(listing.beds, listing.bedsMax), "bedroom count");
+  fact("Bathrooms", listing.baths === null ? null : formatBaths(listing.baths), "bathroom count");
+  fact("Size", listing.sqft === null ? null : formatSqft(listing.sqft), "size");
+  fact(
+    "Type",
+    listing.propertyType === "unknown" ? null : propertyLabel(listing.propertyType),
+    "property type",
+  );
+  fact("Move in", listing.availableDate === null ? null : formatDate(listing.availableDate), "move-in date");
+  fact("Lease", listing.leaseMonths === null ? null : formatLease(listing.leaseMonths), "lease length");
+  fact("Posted", listing.postedAt === null ? null : formatDate(listing.postedAt), "posted date");
+  facts.push({ label: "Last seen", value: relativeTime(listing.lastSeenAt) });
+  if (listing.isSublet) facts.push({ label: "Sublet", value: "Yes" });
+  if (listing.priceBasis === "room") {
+    facts.push({ label: "Priced", value: priceBasisLabel(listing.priceBasis) });
+  }
+  if (listing.incomeRestricted) facts.push({ label: "Income restricted", value: "Yes" });
+  if (listing.seniorHousing) facts.push({ label: "Senior housing", value: "Yes" });
+
   const ranged = isRangedBuilding(listing.beds, listing.bedsMax, listing.price, listing.priceMax);
   const price = headlinePrice(
     listing.price,
@@ -189,6 +222,14 @@ export function ListingDetail({
             : ""}
           . First seen {relativeTime(listing.firstSeenAt)}.
         </p>
+
+        {listing.status === "gone" ? (
+          <p className="mt-3">
+            <Chip tone="quiet" title={GONE_TITLE}>
+              Not seen lately
+            </Chip>
+          </p>
+        ) : null}
 
         {listing.scamSignals.length > 0 ? (
           <div className="mt-3 rounded-[8px] border border-brick bg-brick-soft px-3 py-2.5">
@@ -249,19 +290,13 @@ export function ListingDetail({
       <section className="mt-5 border-t border-rule px-4 py-4 lg:px-6">
         <h3 className="wide text-[14px]">Facts</h3>
         <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
-          <Fact label="Bedrooms" value={formatBedRange(listing.beds, listing.bedsMax)} />
-          <Fact label="Bathrooms" value={formatBaths(listing.baths)} />
-          <Fact label="Size" value={formatSqft(listing.sqft)} />
-          <Fact label="Type" value={propertyLabel(listing.propertyType)} />
-          <Fact label="Move in" value={formatAvailable(listing.availableDate).replace("Available ", "")} />
-          <Fact label="Lease" value={formatLease(listing.leaseMonths)} />
-          <Fact label="Posted" value={listing.postedAt ? formatDate(listing.postedAt) : "not listed"} />
-          <Fact label="Last seen" value={relativeTime(listing.lastSeenAt)} />
-          <Fact label="Priced" value={priceBasisLabel(listing.priceBasis)} />
-          <Fact label="Sublet" value={listing.isSublet ? "Yes" : "No"} />
-          {listing.incomeRestricted ? <Fact label="Income restricted" value="Yes" /> : null}
-          {listing.seniorHousing ? <Fact label="Senior housing" value="Yes" /> : null}
+          {facts.map((fact) => (
+            <Fact key={fact.label} label={fact.label} value={fact.value} />
+          ))}
         </dl>
+        {missing.length > 0 ? (
+          <p className="mt-3 text-[12.5px] text-ink-3">Not listed: {missing.join(", ")}</p>
+        ) : null}
 
         {presentAmenities.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-1.5">

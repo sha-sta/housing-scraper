@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import type { ListingQuery, Stage } from "@housing/shared";
 import { STAGES } from "@housing/shared";
 import { ListingRow } from "../components/ListingRow.tsx";
+import { ScrollFade } from "../components/ScrollFade.tsx";
 import { Empty, ErrorNote, Spinner } from "../components/ui.tsx";
 import { IconSearch } from "../components/icons.tsx";
 import { useLive } from "../lib/live.tsx";
@@ -31,7 +32,7 @@ export function ProfileSwitcher() {
   const { profiles, profileId, select } = useSelection();
   if (profiles.length === 0) return null;
   return (
-    <div className="scroll-x flex items-center gap-2 px-4 pb-1 lg:px-6" role="tablist" aria-label="Profiles">
+    <ScrollFade className="flex items-center gap-2 px-4 pb-1 lg:px-6" role="tablist" aria-label="Profiles">
       {profiles.map((profile) => {
         const active = profile.id === profileId;
         return (
@@ -61,7 +62,7 @@ export function ProfileSwitcher() {
       >
         Edit profiles
       </Link>
-    </div>
+    </ScrollFade>
   );
 }
 

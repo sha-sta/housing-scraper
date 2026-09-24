@@ -188,10 +188,46 @@ test.describe("listing detail and outreach", () => {
     await expect(view.getByText("Per room", { exact: true })).toBeVisible();
   });
 
-  test("says when a listing is priced by the whole unit", async ({ page }) => {
+  test("stays quiet about pricing when a listing is priced by the whole unit", async ({
+    page,
+  }) => {
     await mockApi(page, makeState());
     await page.goto("/listings/lst_calvert");
-    await expect(detail(page).getByText("Whole unit", { exact: true })).toBeVisible();
+    await expect(detail(page).getByText("Priced", { exact: true })).toHaveCount(0);
+  });
+
+  test("says a gone listing is only missing, not gone for good", async ({ page }) => {
+    await mockApi(page, makeState());
+    await page.goto("/listings/lst_toogood");
+    const chip = detail(page).getByText("Not seen lately");
+    await expect(chip).toBeVisible();
+    await expect(chip).toHaveAttribute(
+      "title",
+      "Missing from every source for 3 checks in a row",
+    );
+  });
+
+  test("lists only the facts a listing actually has", async ({ page }) => {
+    await mockApi(page, makeState());
+    await page.goto("/listings/lst_remington");
+    const view = detail(page);
+    await expect(view).toContainText("Not listed: size, move-in date");
+    await expect(view.getByText("Move-in date not listed")).toHaveCount(0);
+    await expect(view.getByText("Sublet", { exact: true })).toHaveCount(0);
+    await expect(view.getByText("Bedrooms", { exact: true })).toBeVisible();
+  });
+
+  test("the gallery counts only the photos that still work", async ({ page }) => {
+    await mockApi(page, makeState());
+    await page.goto("/listings/lst_calvert");
+    await expect(page.getByTestId("gallery-count")).toHaveText("1 of 2");
+
+    await page.route("**/img.offcampusimages.test/**", (route) =>
+      route.fulfill({ status: 403, contentType: "text/plain", body: "Forbidden" }),
+    );
+    await page.reload();
+    await expect(page.getByTestId("gallery-count")).toHaveCount(0);
+    await expect(detail(page).locator("img")).toHaveCount(1);
   });
 
   test("warns plainly about a scam", async ({ page }) => {

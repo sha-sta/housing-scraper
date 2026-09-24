@@ -284,6 +284,15 @@ export function mailtoHref(email: string, subject: string, body: string): string
   return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
+/** Whitespace collapsed and cut at a word boundary, for the desktop row's two spare lines. */
+export function excerpt(text: string, max: number): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  if (flat.length <= max) return flat;
+  const cut = flat.slice(0, max);
+  const space = cut.lastIndexOf(" ");
+  return (space > max * 0.6 ? cut.slice(0, space) : cut).trimEnd();
+}
+
 export function pluralize(count: number, one: string, many: string): string {
   return count === 1 ? `${count} ${one}` : `${count} ${many}`;
 }

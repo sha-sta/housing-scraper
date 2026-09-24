@@ -5,6 +5,7 @@ import {
   formatBaths,
   formatBedRange,
   formatBeds,
+  excerpt,
   formatDate,
   formatInterval,
   formatLease,
@@ -271,6 +272,25 @@ describe("short address", () => {
     expect(shortAddress("3501 St Paul St Apt 4B, Baltimore, MD 21218")).toBe(
       "3501 St Paul St Apt 4B",
     );
+  });
+});
+
+describe("excerpt", () => {
+  it("collapses whitespace", () => {
+    expect(excerpt("Six   bedrooms\n\nover  three floors.", 200)).toBe(
+      "Six bedrooms over three floors.",
+    );
+  });
+
+  it("returns short text untouched", () => {
+    expect(excerpt("Front porch.", 200)).toBe("Front porch.");
+  });
+
+  it("cuts at a word boundary", () => {
+    const long = "word ".repeat(80);
+    const out = excerpt(long, 200);
+    expect(out.length).toBeLessThanOrEqual(200);
+    expect(out.endsWith("word")).toBe(true);
   });
 });
 

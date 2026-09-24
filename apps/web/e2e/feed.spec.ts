@@ -89,12 +89,15 @@ test.describe("feed", () => {
     await page.getByRole("button", { name: "Show everything scraped" }).click();
 
     await expect(page.getByTestId("listing-row")).toHaveCount(9);
-    await expect(page.getByText("Wrong number of bedrooms, and 1 more reason")).toBeVisible();
-    await expect(page.getByText("Flagged as a likely scam, and 1 more reason")).toBeVisible();
+    await expect(
+      page.getByTestId("listing-row").filter({ hasText: "3501 St Paul St" }),
+    ).toContainText("Wrong number of bedrooms, A building on your exclude list");
     await expect(page.getByText("Possible scam")).toBeVisible();
-    await expect(page.getByText("Off the market")).toBeVisible();
+    await expect(page.getByText("Not seen lately").first()).toBeVisible();
     await expect(page.getByText("Income restricted", { exact: true })).toBeVisible();
-    await expect(page.getByText("Income restricted housing, and 1 more reason")).toBeVisible();
+    await expect(
+      page.getByTestId("listing-row").filter({ hasText: "2500 Barclay St" }),
+    ).toContainText("Income restricted housing, Wrong number of bedrooms");
   });
 
   test("a per-room row home leads with the whole-unit rent", async ({ page }) => {
@@ -130,6 +133,57 @@ test.describe("feed", () => {
     await expect(page.getByText("No listings match these filters")).toBeVisible();
     await page.getByRole("button", { name: "Clear filters" }).click();
     await expect(page.getByTestId("listing-row")).toHaveCount(6);
+  });
+
+  test("falls back when a photo host refuses the request", async ({ page }) => {
+    await mockApi(page, makeState());
+    // The JHU portal's photo host answers 403 to anything outside its own page.
+    await page.route("**/img.offcampusimages.test/**", (route) =>
+      route.fulfill({ status: 403, contentType: "text/plain", body: "Forbidden" }),
+    );
+    await page.goto("/");
+
+    const row = page.getByTestId("listing-row").filter({ hasText: "2914 N Calvert St" });
+    // The first photo is refused, so the row shows the second one rather than a broken icon.
+    await expect(row.locator("img")).toHaveJSProperty("naturalWidth", 320);
+  });
+
+  test("shows the placeholder when every photo is refused", async ({ page }) => {
+    await mockApi(page, makeState());
+    await page.route("**/photos/**", (route) =>
+      route.fulfill({ status: 403, contentType: "text/plain", body: "Forbidden" }),
+    );
+    await page.goto("/");
+
+    const row = page.getByTestId("listing-row").filter({ hasText: "2914 N Calvert St" });
+    await expect(row.getByText("No photo")).toBeVisible();
+    await expect(row.locator("img")).toHaveCount(0);
+  });
+
+  test("a wide screen earns a description and amenities on the row", async ({ page }, info) => {
+    await mockApi(page, makeState());
+    await page.goto("/");
+    const row = page.getByTestId("listing-row").first();
+    const blurb = row.getByText("Six bedrooms over three floors", { exact: false });
+    if (info.project.name === "desktop") {
+      await expect(blurb).toBeVisible();
+      await expect(row.getByText("Laundry in unit")).toBeVisible();
+    } else {
+      await expect(blurb).toBeHidden();
+    }
+  });
+
+  test("hints that the profile row scrolls when it overflows", async ({ page }, info) => {
+    const state = makeState();
+    const first = state.profiles[0];
+    if (first) first.name = "Row home for six people starting in June near Homewood";
+    await mockApi(page, state);
+    await page.goto("/");
+    await expect(page.getByRole("tab").first()).toBeVisible();
+
+    if (info.project.name === "phone") {
+      await expect(page.getByTestId("scroll-fade")).toBeVisible();
+    }
   });
 
   test("shows a live indicator", async ({ page }) => {

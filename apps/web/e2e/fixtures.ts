@@ -136,7 +136,10 @@ const SEEDS: ListingSeed[] = [
     lat: 39.3252,
     lon: -76.6156,
     firstSeenMinutes: 4,
-    photos: ["https://example.test/photos/calvert-1.jpg", "https://example.test/photos/calvert-2.jpg"],
+    photos: [
+      "https://img.offcampusimages.test/photos/calvert-1.jpg",
+      "https://example.test/photos/calvert-2.jpg",
+    ],
     sources: [
       { sourceId: "craigslist", sourceListingId: "cl-8811", url: "https://example.test/cl/8811" },
       { sourceId: "jhu-och", sourceListingId: "och-4410", url: "https://example.test/och/4410" },
