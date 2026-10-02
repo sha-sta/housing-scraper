@@ -92,6 +92,7 @@ function toSourceStatus(source: StoredSource): SourceStatus {
     consecutiveFailures: source.consecutiveFailures,
     lastRunCount: source.lastRunCount,
     totalListings: source.totalListings,
+    nextRunAt: null,
   };
 }
 
@@ -146,6 +147,8 @@ export function createApp(deps: AppDeps): Hono {
       unreadNotifications: repos.notify.countUnread(),
       sourcesDown: repos.config.countSourcesDown(5),
       byStage: repos.listings.countByStage(),
+      pushesToday: 0,
+      pushBudget: 0,
     };
     return c.json(stats);
   });

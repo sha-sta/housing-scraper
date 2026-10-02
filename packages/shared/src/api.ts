@@ -146,6 +146,8 @@ export const SourceStatusSchema = z.object({
   consecutiveFailures: z.number(),
   lastRunCount: z.number(),
   totalListings: z.number(),
+  // When the scheduler plans to run this source next. Null while disabled or needing setup.
+  nextRunAt: z.string().nullable().default(null),
 });
 export type SourceStatus = z.infer<typeof SourceStatusSchema>;
 export const SourcePatchSchema = z.object({
@@ -243,6 +245,9 @@ export const StatsSchema = z.object({
   unreadNotifications: z.number(),
   sourcesDown: z.number(),
   byStage: z.record(StageSchema, z.number()),
+  // Pushes sent so far today (UTC) against the daily budget from NTFY_DAILY_BUDGET
+  pushesToday: z.number().default(0),
+  pushBudget: z.number().default(0),
 });
 export type Stats = z.infer<typeof StatsSchema>;
 
