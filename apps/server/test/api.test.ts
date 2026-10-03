@@ -1,4 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -18,6 +20,8 @@ import type { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/api/app.ts";
 import { silentLogger } from "../src/log.ts";
+import { createNotifier, type Notifier } from "../src/notify/notifier.ts";
+import { createNtfyClient } from "../src/notify/ntfy.ts";
 import { addProfile, createHarness, fakeAdapter, runOnce, type Harness } from "./harness.ts";
 import { HOMEWOOD, makeListing } from "./helpers.ts";
 import type { NetworkDetector } from "../src/network.ts";
@@ -57,6 +61,8 @@ function buildApp(
     webDistDir?: string | null;
     detector?: NetworkDetector;
     tailscaleListening?: boolean;
+    notifier?: Notifier;
+    ntfyDailyBudget?: number;
   } = {},
 ): Hono {
   return createApp({
@@ -65,11 +71,12 @@ function buildApp(
     pipeline: harness.pipeline,
     drafts: harness.drafts,
     mailer: harness.mailer,
-    notifier: harness.notifier,
+    notifier: options.notifier ?? harness.notifier,
     log: silentLogger(),
     runSourceNow: async (sourceId) => {
       ranSources.push(sourceId);
     },
+    ntfyDailyBudget: options.ntfyDailyBudget ?? 200,
     dashboardPassword: options.password ?? null,
     llmConfigured: false,
     ntfyCommandTopicConfigured: true,
@@ -147,6 +154,48 @@ describe("campuses and stats", () => {
   it("reports stats in the documented shape", async () => {
     const res = await app.request("/api/stats");
     expect(StatsSchema.parse(await res.json()).activeListings).toBe(0);
+  });
+
+  it("counts the day's pushes against the configured budget", async () => {
+    let posts = 0;
+    const ntfyServer = createServer((req, res) => {
+      req.on("data", () => {});
+      req.on("end", () => {
+        posts += 1;
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ id: "fake" }));
+      });
+    });
+    await new Promise<void>((resolve) => ntfyServer.listen(0, "127.0.0.1", resolve));
+    const port = (ntfyServer.address() as AddressInfo).port;
+
+    const notifier = createNotifier({
+      notify: harness.repos.notify,
+      config: harness.repos.config,
+      ntfy: createNtfyClient({ server: () => `http://127.0.0.1:${port}`, token: null, log: silentLogger() }),
+      bus: harness.bus,
+      log: silentLogger(),
+      dailyBudget: 25,
+      loadProfile: (id) => harness.repos.profiles.get(id),
+    });
+    const served = buildApp({ notifier, ntfyDailyBudget: 25 });
+    const profile = addProfile(harness);
+
+    for (let i = 0; i < 2; i += 1) {
+      const pushed = await served.request("/api/test/ntfy", {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ profileId: profile.id }),
+      });
+      expect(await pushed.json()).toEqual({ ok: true });
+    }
+    expect(posts).toBe(2);
+
+    const stats = StatsSchema.parse(await (await served.request("/api/stats")).json());
+    expect(stats.pushesToday).toBe(2);
+    expect(stats.pushBudget).toBe(25);
+
+    await new Promise<void>((resolve) => ntfyServer.close(() => resolve()));
   });
 });
 

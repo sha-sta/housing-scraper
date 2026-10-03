@@ -48,7 +48,8 @@ export interface NotifierOptions {
   loadProfile(id: string): Profile | null;
 }
 
-function utcDay(now: Date): string {
+/** The key of the push budget counter. ntfy.sh resets its daily cap at UTC midnight. */
+export function utcDay(now: Date): string {
   return now.toISOString().slice(0, 10);
 }
 

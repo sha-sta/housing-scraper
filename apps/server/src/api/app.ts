@@ -28,7 +28,7 @@ import type { Repos, StoredSource } from "../db/repo/index.ts";
 import { newId } from "../ids.ts";
 import type { Logger } from "../log.ts";
 import { previewProfile } from "../match/reevaluate.ts";
-import type { Notifier } from "../notify/notifier.ts";
+import { utcDay, type Notifier } from "../notify/notifier.ts";
 import type { DraftService } from "../outreach/drafts.ts";
 import type { Mailer } from "../outreach/mailer.ts";
 import type { Pipeline } from "../pipeline/run.ts";
@@ -50,6 +50,8 @@ export interface AppDeps {
   notifier: Notifier;
   log: Logger;
   runSourceNow(sourceId: string): Promise<void>;
+  /** NTFY_DAILY_BUDGET, the ceiling the stats screen shows the day's push count against. */
+  ntfyDailyBudget: number;
   dashboardPassword: string | null;
   llmConfigured: boolean;
   ntfyCommandTopicConfigured: boolean;
@@ -147,8 +149,8 @@ export function createApp(deps: AppDeps): Hono {
       unreadNotifications: repos.notify.countUnread(),
       sourcesDown: repos.config.countSourcesDown(5),
       byStage: repos.listings.countByStage(),
-      pushesToday: 0,
-      pushBudget: 0,
+      pushesToday: repos.notify.pushesToday(utcDay(new Date())),
+      pushBudget: deps.ntfyDailyBudget,
     };
     return c.json(stats);
   });
