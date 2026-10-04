@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import type { ListingQuery, Stage } from "@housing/shared";
 import { STAGES } from "@housing/shared";
@@ -6,6 +6,7 @@ import { ListingRow } from "../components/ListingRow.tsx";
 import { ScrollFade } from "../components/ScrollFade.tsx";
 import { Empty, ErrorNote, Spinner } from "../components/ui.tsx";
 import { IconSearch } from "../components/icons.tsx";
+import { newSinceIndex, useLastVisit } from "../lib/last-visit.ts";
 import { useLive } from "../lib/live.tsx";
 import { useListings, useListingState, useSources } from "../lib/queries.ts";
 import { useSelection } from "../lib/selection.tsx";
@@ -66,10 +67,26 @@ export function ProfileSwitcher() {
   );
 }
 
+/** The line between what showed up since the last visit and what was already here. */
+function NewSinceDivider() {
+  return (
+    <div
+      className="flex items-center gap-2.5 bg-ground px-4 py-1 lg:px-6"
+      data-testid="new-divider"
+    >
+      <span className="med whitespace-nowrap text-[11.5px] text-ink-2">
+        New since you last looked
+      </span>
+      <span aria-hidden="true" className="h-px flex-1 bg-rule-strong" />
+    </div>
+  );
+}
+
 export function Feed() {
   const [params, setParams] = useSearchParams();
   const { profileId, profile, profiles } = useSelection();
   const { arrivals, clearArrivals } = useLive();
+  const since = useLastVisit();
   const { data: sources } = useSources();
   const listingState = useListingState();
   const [limit, setLimit] = useState(50);
@@ -123,6 +140,7 @@ export function Feed() {
   const total = listings.data?.total ?? 0;
   const arrivalSet = useMemo(() => new Set(arrivals), [arrivals]);
   const unseen = arrivals.filter((id) => items.some((item) => item.listing.id === id)).length;
+  const dividerAt = newSinceIndex(items, since, arrivalSet);
 
   function update(key: string, value: string | null) {
     setParams((previous) => {
@@ -300,21 +318,23 @@ export function Feed() {
       ) : null}
 
       <div className="row-stack border-t border-rule">
-        {items.map((view) => (
-          <ListingRow
-            key={view.listing.id}
-            view={view}
-            profile={profile}
-            profileId={profileId}
-            arrived={arrivalSet.has(view.listing.id)}
-            showRestrictions={scope === "all"}
-            onStar={(value) =>
-              listingState.mutate({ id: view.listing.id, patch: { starred: value } })
-            }
-            onHide={(value) =>
-              listingState.mutate({ id: view.listing.id, patch: { hidden: value } })
-            }
-          />
+        {items.map((view, index) => (
+          <Fragment key={view.listing.id}>
+            {index === dividerAt ? <NewSinceDivider /> : null}
+            <ListingRow
+              view={view}
+              profile={profile}
+              profileId={profileId}
+              arrived={arrivalSet.has(view.listing.id)}
+              showRestrictions={scope === "all"}
+              onStar={(value) =>
+                listingState.mutate({ id: view.listing.id, patch: { starred: value } })
+              }
+              onHide={(value) =>
+                listingState.mutate({ id: view.listing.id, patch: { hidden: value } })
+              }
+            />
+          </Fragment>
         ))}
       </div>
 

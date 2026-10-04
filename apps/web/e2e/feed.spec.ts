@@ -186,6 +186,37 @@ test.describe("feed", () => {
     }
   });
 
+  test("draws a line under what showed up since the last visit", async ({ page }) => {
+    await mockApi(page, makeState());
+    // Only seed the mark when there is none, so the reload below reads the visit's own stamp.
+    await page.addInitScript((mark: string) => {
+      if (window.localStorage.getItem("housing.feedLastVisit") === null) {
+        window.localStorage.setItem("housing.feedLastVisit", mark);
+      }
+    }, String(Date.now() - 60 * 60 * 1000));
+    await page.goto("/");
+
+    await expect(page.getByTestId("new-divider")).toContainText("New since you last looked");
+
+    const stack = page.locator('[data-testid="listing-row"], [data-testid="new-divider"]');
+    await expect(stack).toHaveCount(7);
+    await expect(stack.nth(2)).toContainText("3111 Guilford Ave");
+    await expect(stack.nth(3)).toHaveAttribute("data-testid", "new-divider");
+    await expect(stack.nth(4)).toContainText("420 E 32nd St");
+
+    // This visit stamped its own mark, so on the next one none of this is new.
+    await page.reload();
+    await expect(page.getByTestId("listing-row").first()).toBeVisible();
+    await expect(page.getByTestId("new-divider")).toHaveCount(0);
+  });
+
+  test("marks nothing as new on a first ever visit", async ({ page }) => {
+    await mockApi(page, makeState());
+    await page.goto("/");
+    await expect(page.getByTestId("listing-row").first()).toBeVisible();
+    await expect(page.getByTestId("new-divider")).toHaveCount(0);
+  });
+
   test("shows a live indicator", async ({ page }) => {
     await mockApi(page, makeState());
     await page.goto("/");
