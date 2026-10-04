@@ -50,6 +50,8 @@ export interface AppDeps {
   notifier: Notifier;
   log: Logger;
   runSourceNow(sourceId: string): Promise<void>;
+  /** The scheduler's planned time for this source, or null when nothing is planned. */
+  nextRunAt(sourceId: string): string | null;
   /** NTFY_DAILY_BUDGET, the ceiling the stats screen shows the day's push count against. */
   ntfyDailyBudget: number;
   dashboardPassword: string | null;
@@ -77,7 +79,7 @@ function toSettings(deps: AppDeps): Settings | null {
   };
 }
 
-function toSourceStatus(source: StoredSource): SourceStatus {
+function toSourceStatus(source: StoredSource, nextRunAt: string | null): SourceStatus {
   return {
     id: source.id,
     name: source.name,
@@ -94,7 +96,7 @@ function toSourceStatus(source: StoredSource): SourceStatus {
     consecutiveFailures: source.consecutiveFailures,
     lastRunCount: source.lastRunCount,
     totalListings: source.totalListings,
-    nextRunAt: null,
+    nextRunAt,
   };
 }
 
@@ -329,7 +331,9 @@ export function createApp(deps: AppDeps): Hono {
     return c.body(null, 204);
   });
 
-  api.get("/sources", (c) => c.json(repos.config.listSources().map(toSourceStatus)));
+  api.get("/sources", (c) =>
+    c.json(repos.config.listSources().map((source) => toSourceStatus(source, deps.nextRunAt(source.id)))),
+  );
 
   api.patch(
     "/sources/:id",
@@ -361,7 +365,7 @@ export function createApp(deps: AppDeps): Hono {
       bus.publish({ type: "source.status", sourceId: id });
       const updated = repos.config.getSource(id);
       if (updated === null) return c.json({ error: "source not found" }, 404);
-      return c.json(toSourceStatus(updated));
+      return c.json(toSourceStatus(updated, deps.nextRunAt(id)));
     },
   );
 
@@ -371,7 +375,7 @@ export function createApp(deps: AppDeps): Hono {
     await deps.runSourceNow(id);
     const updated = repos.config.getSource(id);
     if (updated === null) return c.json({ error: "source not found" }, 404);
-    return c.json(toSourceStatus(updated));
+    return c.json(toSourceStatus(updated, deps.nextRunAt(id)));
   });
 
   api.post("/test/ntfy", zValidator("json", z.object({ profileId: z.string() })), async (c) => {

@@ -96,6 +96,8 @@ export interface Scheduler {
   start(): void;
   stop(): Promise<void>;
   runNow(sourceId: string): Promise<void>;
+  /** When the pending timer for this source is due. Null while it is disabled, unset up, or running. */
+  nextRunAt(sourceId: string): string | null;
 }
 
 export interface SchedulerOptions {
@@ -112,6 +114,8 @@ export interface SchedulerOptions {
 export function createScheduler(options: SchedulerOptions): Scheduler {
   const { adapters, repos, pipeline, bus, health, log } = options;
   const timers = new Map<string, NodeJS.Timeout>();
+  /** Epoch milliseconds each pending timer is due, so the dashboard can show a countdown. */
+  const dueAt = new Map<string, number>();
   const inFlight = new Map<string, Promise<void>>();
   const aborts = new Map<string, AbortController>();
   let running = false;
@@ -154,6 +158,7 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
     }, delay);
     timer.unref();
     timers.set(sourceId, timer);
+    dueAt.set(sourceId, Date.now() + delay);
   }
 
   async function execute(adapter: SourceAdapter, sourceId: string): Promise<void> {
@@ -230,6 +235,7 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
       schedule(sourceId);
     });
     inFlight.set(sourceId, promise);
+    dueAt.delete(sourceId);
     return promise;
   }
 
@@ -241,9 +247,11 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
         const source = repos.config.getSource(adapter.id);
         if (source === null || !source.enabled) continue;
         // Stagger the first runs so the very first boot does not hit every site at once.
-        const timer = setTimeout(() => void runOnce(adapter.id), 2_000 + Math.random() * 3_000);
+        const delay = 2_000 + Math.random() * 3_000;
+        const timer = setTimeout(() => void runOnce(adapter.id), delay);
         timer.unref();
         timers.set(adapter.id, timer);
+        dueAt.set(adapter.id, Date.now() + delay);
       }
       log.info("scheduler started", { sources: adapters.length });
     },
@@ -252,6 +260,7 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
       running = false;
       for (const timer of timers.values()) clearTimeout(timer);
       timers.clear();
+      dueAt.clear();
       for (const controller of aborts.values()) controller.abort();
       await Promise.allSettled([...inFlight.values()]);
     },
@@ -260,6 +269,15 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
       const timer = timers.get(sourceId);
       if (timer !== undefined) clearTimeout(timer);
       return runOnce(sourceId);
+    },
+
+    nextRunAt(sourceId) {
+      const source = repos.config.getSource(sourceId);
+      // A source that cannot run has no next run to show, whatever timer history it has.
+      if (source === null || !source.enabled || source.needsSetup) return null;
+      if (inFlight.has(sourceId)) return null;
+      const due = dueAt.get(sourceId);
+      return due === undefined ? null : new Date(due).toISOString();
     },
   };
 }

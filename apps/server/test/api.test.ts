@@ -63,6 +63,7 @@ function buildApp(
     tailscaleListening?: boolean;
     notifier?: Notifier;
     ntfyDailyBudget?: number;
+    nextRunAt?: string | null;
   } = {},
 ): Hono {
   return createApp({
@@ -76,6 +77,7 @@ function buildApp(
     runSourceNow: async (sourceId) => {
       ranSources.push(sourceId);
     },
+    nextRunAt: () => options.nextRunAt ?? null,
     ntfyDailyBudget: options.ntfyDailyBudget ?? 200,
     dashboardPassword: options.password ?? null,
     llmConfigured: false,
@@ -640,6 +642,18 @@ describe("sources", () => {
     const ran = await app.request("/api/sources/fake/run", { method: "POST" });
     expect(ran.status).toBe(200);
     expect(ranSources).toEqual(["fake"]);
+  });
+
+  it("carries the scheduler's next run time into the status", async () => {
+    await seedListing();
+    const at = "2026-10-04T21:40:00.000Z";
+    const served = buildApp({ nextRunAt: at });
+
+    const listed = (await (await served.request("/api/sources")).json()) as unknown[];
+    expect(SourceStatusSchema.parse(listed[0]).nextRunAt).toBe(at);
+
+    const ran = await served.request("/api/sources/fake/run", { method: "POST" });
+    expect(SourceStatusSchema.parse(await ran.json()).nextRunAt).toBe(at);
   });
 
   it("rebaselines a source that was off for more than a day", async () => {

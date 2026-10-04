@@ -129,6 +129,7 @@ async function main(): Promise<void> {
     notifier,
     log,
     runSourceNow: (sourceId) => scheduler.runNow(sourceId),
+    nextRunAt: (sourceId) => scheduler.nextRunAt(sourceId),
     ntfyDailyBudget: env.ntfyDailyBudget,
     dashboardPassword: env.dashboardPassword,
     llmConfigured: env.anthropicApiKey !== null,
