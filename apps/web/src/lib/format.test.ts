@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   composeLabel,
+  digestThreshold,
   formatAvailable,
   formatBaths,
   formatBedRange,
@@ -22,6 +23,7 @@ import {
   mailtoHref,
   pluralize,
   propertyLabel,
+  pushCountLine,
   relativeTime,
   scoreBand,
   scoreWord,
@@ -299,5 +301,19 @@ describe("pluralize", () => {
     expect(pluralize(1, "listing", "listings")).toBe("1 listing");
     expect(pluralize(0, "listing", "listings")).toBe("0 listings");
     expect(pluralize(12, "listing", "listings")).toBe("12 listings");
+  });
+});
+
+describe("the push budget", () => {
+  it("reads as one line", () => {
+    expect(pushCountLine(14, 200)).toBe("14 of 200 pushes today");
+    expect(pushCountLine(0, 50)).toBe("0 of 50 pushes today");
+  });
+
+  it("puts the digest threshold at four fifths of the budget", () => {
+    expect(digestThreshold(200)).toBe(160);
+    expect(digestThreshold(50)).toBe(40);
+    expect(digestThreshold(0)).toBe(0);
+    expect(digestThreshold(75)).toBe(60);
   });
 });

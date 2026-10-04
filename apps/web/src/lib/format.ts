@@ -297,6 +297,16 @@ export function pluralize(count: number, one: string, many: string): string {
   return count === 1 ? `${count} ${one}` : `${count} ${many}`;
 }
 
+/** The day's pushes against the budget, as one line. */
+export function pushCountLine(today: number, budget: number): string {
+  return `${today} of ${budget} pushes today`;
+}
+
+/** Past this many pushes the server holds the ordinary matches back for a digest. */
+export function digestThreshold(budget: number): number {
+  return Math.round(budget * 0.8);
+}
+
 /**
  * Feed rows are read at a glance on a phone, and every listing is in the same city, so a
  * trailing ", Baltimore, MD 21218" costs half the line and says nothing. Only that exact

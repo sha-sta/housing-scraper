@@ -2,10 +2,17 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { Profile } from "@housing/shared";
 import { PhoneAccess } from "../../components/PhoneAccess.tsx";
+import { PushBudget } from "../../components/PushBudget.tsx";
 import { QrCode } from "../../components/QrCode.tsx";
 import { Chip, Empty, Labeled, PageHeader, Section, Spinner } from "../../components/ui.tsx";
 import { api } from "../../lib/api.ts";
-import { useProfiles, useSaveProfile, useSettings, useUpdateSettings } from "../../lib/queries.ts";
+import {
+  useProfiles,
+  useSaveProfile,
+  useSettings,
+  useStats,
+  useUpdateSettings,
+} from "../../lib/queries.ts";
 import { useCopy } from "../../lib/clipboard.ts";
 import { randomTopic, subscribeUrl } from "../../lib/topic.ts";
 import { useToast } from "../../lib/toast.tsx";
@@ -156,6 +163,7 @@ function ProfileTopic({ profile, server }: { profile: Profile; server: string })
 export function Ntfy() {
   const settings = useSettings();
   const profiles = useProfiles();
+  const stats = useStats();
   const update = useUpdateSettings();
   const toast = useToast();
   const [server, setServer] = useState("");
@@ -176,6 +184,12 @@ export function Ntfy() {
       />
 
       <PhoneAccess />
+
+      {stats.data && stats.data.pushBudget > 0 ? (
+        <Section title="Today">
+          <PushBudget today={stats.data.pushesToday} budget={stats.data.pushBudget} />
+        </Section>
+      ) : null}
 
       <Section title="Server">
         <Labeled label="ntfy server" hint="ntfy.sh works out of the box. Point it at your own if you run one.">

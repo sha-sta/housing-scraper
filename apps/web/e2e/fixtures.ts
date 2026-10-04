@@ -831,6 +831,8 @@ export interface FakeState {
   notifications: Notification[];
   templates: Template[];
   network: NetworkInfo;
+  /** What the server reports for the day's ntfy pushes. A budget of 0 means none is set. */
+  pushes: { today: number; budget: number };
 }
 
 export function makeState(
@@ -847,6 +849,7 @@ export function makeState(
     sources: makeSources(),
     notifications: makeNotifications(),
     templates: makeTemplates(),
+    pushes: { today: 14, budget: 200 },
   };
 }
 
@@ -864,6 +867,8 @@ function stats(state: FakeState) {
     unreadNotifications: state.notifications.filter((n) => n.readAt === null).length,
     sourcesDown: state.sources.filter((s) => s.consecutiveFailures >= 3).length,
     byStage,
+    pushesToday: state.pushes.today,
+    pushBudget: state.pushes.budget,
   });
 }
 

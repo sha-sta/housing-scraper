@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { Notification } from "@housing/shared";
 import { Chip, Empty, ErrorNote, PageHeader, Spinner } from "../components/ui.tsx";
-import { useMarkNotificationsRead, useNotifications } from "../lib/queries.ts";
-import { relativeTime } from "../lib/format.ts";
+import { useMarkNotificationsRead, useNotifications, useStats } from "../lib/queries.ts";
+import { pushCountLine, relativeTime } from "../lib/format.ts";
 
 const KIND_WORDS: Record<Notification["kind"], string> = {
   match: "New match",
@@ -19,6 +19,7 @@ const KIND_WORDS: Record<Notification["kind"], string> = {
 export function Notifications() {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const notifications = useNotifications(unreadOnly || undefined);
+  const stats = useStats();
   const markRead = useMarkNotificationsRead();
   const items = notifications.data ?? [];
   const unread = items.filter((item) => item.readAt === null).length;
@@ -36,14 +37,21 @@ export function Notifications() {
         title="Notifications"
         hint="Everything the app pushed, and everything it held back during quiet hours."
         actions={
-          <button
-            type="button"
-            className="ctl med text-[13.5px]"
-            disabled={unread === 0 || markRead.isPending}
-            onClick={() => markRead.mutate(undefined)}
-          >
-            Mark all read
-          </button>
+          <>
+            {stats.data && stats.data.pushBudget > 0 ? (
+              <span className="num text-[12.5px] text-ink-2" data-testid="push-count">
+                {pushCountLine(stats.data.pushesToday, stats.data.pushBudget)}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              className="ctl med text-[13.5px]"
+              disabled={unread === 0 || markRead.isPending}
+              onClick={() => markRead.mutate(undefined)}
+            >
+              Mark all read
+            </button>
+          </>
         }
       />
 
