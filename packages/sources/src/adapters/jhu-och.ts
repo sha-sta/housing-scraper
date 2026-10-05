@@ -294,6 +294,8 @@ const DetailBodySchema = z.object({
             priceLow: z.number().nullable().optional(),
             perBedPricing: z.boolean().nullable().optional(),
             availableDate: z.string().nullable().optional(),
+            availability: z.string().nullable().optional(),
+            availabilityDescription: z.string().nullable().optional(),
           })
           .loose(),
       )
@@ -321,7 +323,110 @@ const DetailBodySchema = z.object({
   }),
 });
 
-export function parseJhuDetailBody(payload: unknown, base: RawListingInput): RawListingInput {
+type FloorPlan = NonNullable<z.infer<typeof DetailBodySchema>["data"]["floorPlans"]>[number];
+
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+/** "Available now" and "available immediately" state today, not a date. */
+const AVAILABLE_NOW = /\bavailable\s+(?:now|immediately|today)\b/i;
+/** The lead-in a landlord types before the date: "Available from 6/1/2027", "Available: 6/1/27". */
+const AVAILABLE_LEAD =
+  String.raw`\bavailable\b(?:\s+(?:on|from|starting|beginning|as\s+of))?\s*:?\s*`;
+const AVAILABLE_NUMERIC = new RegExp(
+  `${AVAILABLE_LEAD}(\\d{1,2})/(\\d{1,2})/(\\d{2}|\\d{4})\\b`,
+  "i",
+);
+const AVAILABLE_MONTH = new RegExp(
+  `${AVAILABLE_LEAD}(${MONTHS.join("|")})[a-z]*\\.?,?\\s+(?:(\\d{1,2})(?:st|nd|rd|th)?,?\\s+)?(\\d{4})\\b`,
+  "i",
+);
+
+function ymd(year: number, month: number, day: number): string | null {
+  if (year < 2000 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/** Today in UTC, the same clock isoDate() reads every other date on the row with. */
+function today(now: Date): string {
+  return now.toISOString().slice(0, 10);
+}
+
+/**
+ * Reads a date out of the wording a landlord typed. Only wording anchored on "available"
+ * counts: a description carries other dates ("new flooring June 1st, 2026") and plenty of
+ * other things that are available ("garage parking available"). A month with no day means
+ * the first of that month, which is when a lease starts anyway.
+ */
+export function availableDateFromText(
+  text: string | null | undefined,
+  now: Date = new Date(),
+): string | null {
+  if (!text) return null;
+  const numeric = AVAILABLE_NUMERIC.exec(text);
+  if (numeric) {
+    const year = Number(numeric[3]);
+    return ymd(year < 100 ? 2000 + year : year, Number(numeric[1]), Number(numeric[2]));
+  }
+  const month = AVAILABLE_MONTH.exec(text);
+  if (month) {
+    const index = MONTHS.indexOf((month[1] ?? "").slice(0, 3).toLowerCase());
+    return ymd(Number(month[3]), index + 1, month[2] ? Number(month[2]) : 1);
+  }
+  return AVAILABLE_NOW.test(text) ? today(now) : null;
+}
+
+/**
+ * Landlords who never pick a date come through with the Unix epoch, which the portal renders
+ * as "Available Now", so a date that old is the site's placeholder and not a statement.
+ */
+const EARLIEST_REAL_DATE = "2000-01-01";
+
+function planStatedDate(plan: FloorPlan | undefined): string | null {
+  const iso = isoDate(plan?.availableDate);
+  return iso !== null && iso >= EARLIEST_REAL_DATE ? iso : null;
+}
+
+function planSaysNow(plan: FloorPlan | undefined): boolean {
+  if (!plan) return false;
+  if (plan.availability === "AvailableNow") return true;
+  return AVAILABLE_NOW.test(plan.availabilityDescription ?? "");
+}
+
+/**
+ * The date the row states it comes free. The matching plan speaks for the row; when it states
+ * nothing, the earliest dated plan speaks for the building, the convention price and beds
+ * already follow. The description is the last resort, because only a listing a landlord wrote
+ * by hand states the date in prose.
+ */
+function detailAvailableDate(
+  plans: FloorPlan[],
+  matchingPlan: FloorPlan | undefined,
+  texts: Array<string | null | undefined>,
+  now: Date,
+): string | null {
+  const matching = planStatedDate(matchingPlan);
+  if (matching !== null) return matching;
+  if (planSaysNow(matchingPlan)) return today(now);
+
+  const dated = plans
+    .map(planStatedDate)
+    .filter((date): date is string => date !== null)
+    .sort();
+  if (dated[0]) return dated[0];
+  if (plans.some(planSaysNow)) return today(now);
+
+  for (const text of texts) {
+    const fromText = availableDateFromText(text, now);
+    if (fromText !== null) return fromText;
+  }
+  return null;
+}
+
+export function parseJhuDetailBody(
+  payload: unknown,
+  base: RawListingInput,
+  now: Date = new Date(),
+): RawListingInput {
   const { data } = decode(DetailBodySchema, payload, "jhu-och detail");
   const summary = data.floorPlanSummary;
   const plans = data.floorPlans ?? [];
@@ -373,7 +478,12 @@ export function parseJhuDetailBody(payload: unknown, base: RawListingInput): Raw
     zip: data.geography.zipCode || base.zip || null,
     lat: data.geography.latitude ?? base.lat ?? null,
     lon: data.geography.longitude ?? base.lon ?? null,
-    availableDate: isoDate(matchingPlan?.availableDate),
+    availableDate: detailAvailableDate(
+      plans,
+      matchingPlan,
+      [data.longDescription, data.shortDescription],
+      now,
+    ),
     amenities: amenitiesFromLabels(amenityLabels),
     photos: photos.length > 0 ? photos : (base.photos ?? []),
     contact: {

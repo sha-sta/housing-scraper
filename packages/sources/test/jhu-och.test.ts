@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DETAIL_BFF_PATTERN,
   SEARCH_BFF_PATTERN,
+  availableDateFromText,
   bffUrlForPage,
   parseJhuDetailBody,
   parseJhuSearchBody,
@@ -14,6 +15,10 @@ import { fixture } from "./fixture.ts";
 const searchPage = fixture("jhu-och", "search-page.html");
 const detailPage = fixture("jhu-och", "detail-page.html");
 const multiPlanPage = fixture("jhu-och", "detail-page-multi-plan.html");
+const availableNowPage = fixture("jhu-och", "detail-page-available-now.html");
+
+/** A fixed day, so the rows that state "now" rather than a date assert a concrete value. */
+const RUN_DAY = new Date("2026-10-14T18:30:00Z");
 
 describe("transfer state", () => {
   it("unescapes Angular's five tokens in one pass", () => {
@@ -126,6 +131,8 @@ describe("parseJhuDetailBody", () => {
   it("reads baths, sqft and the available date off the matching floor plan", () => {
     expect(detail.baths).toBe(3);
     expect(detail.sqft).toBe(1430);
+    // The plan carries availableDate 2026-08-02T23:59:59Z next to availability AvailableNow;
+    // the stated date wins over the wording.
     expect(detail.availableDate).toBe("2026-08-02");
   });
 
@@ -172,6 +179,7 @@ describe("parseJhuDetailBody for a building with several floor plans", () => {
   const detail = parseJhuDetailBody(
     readTransferEntry(multiPlanPage, DETAIL_BFF_PATTERN).body,
     placard!,
+    RUN_DAY,
   );
 
   it("widens beds and bedsMax to the building's smallest and largest plan", () => {
@@ -187,5 +195,71 @@ describe("parseJhuDetailBody for a building with several floor plans", () => {
     expect(placard?.price).toBeNull();
     expect(detail.price).toBe(1600);
     expect(detail.priceMax).toBe(3545);
+  });
+
+  it("falls back to the earliest dated plan when the matching plan states no date", () => {
+    // The four bedroom plan says "Available Soon" with no date. The one bedroom comes free
+    // 2026-07-31 and the studio 2026-11-13, so the building is available from 2026-07-31.
+    expect(detail.availableDate).toBe("2026-07-31");
+  });
+});
+
+describe("parseJhuDetailBody when the listing states availability as now", () => {
+  const base = parseJhuSearchBody(readTransferEntry(searchPage, SEARCH_BFF_PATTERN).body).listings[2];
+  const detail = parseJhuDetailBody(
+    readTransferEntry(availableNowPage, DETAIL_BFF_PATTERN).body,
+    base!,
+    RUN_DAY,
+  );
+
+  it("reads the epoch placeholder plus AvailableNow as the day of the run", () => {
+    // 3213 Guilford Avenue sends availableDate 1970-01-01T23:59:59Z with availability
+    // AvailableNow, which the portal renders as "Available Now".
+    expect(detail.address).toBe("3213 Guilford Avenue");
+    expect(detail.availableDate).toBe("2026-10-14");
+  });
+
+  it("ignores the unrelated date in the description", () => {
+    expect(detail.description).toContain("New flooring was installed throughout the house June 1st");
+  });
+
+  it("leaves the date null when neither the plan nor the description states one", () => {
+    const payload = {
+      data: {
+        siteId: "ocpq7qphxy",
+        name: "Charles Village Townhouse",
+        longDescription: "Street parking available. Laundry in the basement. Painted June 2026.",
+        geography: { streetAddress: "2751 Maryland Ave" },
+        floorPlans: [
+          { beds: 5, availability: "AvailableSoon", availabilityDescription: "Available Soon" },
+        ],
+      },
+    };
+    expect(parseJhuDetailBody(payload, base!, RUN_DAY).availableDate).toBeNull();
+  });
+});
+
+describe("availableDateFromText", () => {
+  it("reads the numeric date a landlord types after available", () => {
+    expect(availableDateFromText("Available 6/1/2027", RUN_DAY)).toBe("2027-06-01");
+    expect(availableDateFromText("Available from 8/15/26", RUN_DAY)).toBe("2026-08-15");
+  });
+
+  it("reads a month with no day as the first of that month", () => {
+    expect(availableDateFromText("Available August 2027", RUN_DAY)).toBe("2027-08-01");
+    expect(availableDateFromText("Available Aug. 15, 2027", RUN_DAY)).toBe("2027-08-15");
+  });
+
+  it("reads now and immediately as the day of the run", () => {
+    expect(availableDateFromText("Available Now", RUN_DAY)).toBe("2026-10-14");
+    expect(availableDateFromText("available immediately for 4 students", RUN_DAY)).toBe("2026-10-14");
+  });
+
+  it("ignores the other dates and the other things a description calls available", () => {
+    expect(availableDateFromText("There is even garage parking available.", RUN_DAY)).toBeNull();
+    expect(availableDateFromText("New flooring was installed June 1st, 2026.", RUN_DAY)).toBeNull();
+    expect(availableDateFromText("High-Speed Internet Available", RUN_DAY)).toBeNull();
+    expect(availableDateFromText("Available for the 2027-2028 school year", RUN_DAY)).toBeNull();
+    expect(availableDateFromText(null, RUN_DAY)).toBeNull();
   });
 });
