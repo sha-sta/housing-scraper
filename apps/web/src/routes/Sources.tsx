@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { SourceStatus } from "@housing/shared";
 import { Chip, Empty, ErrorNote, PageHeader, Spinner } from "../components/ui.tsx";
 import { IconChevron, IconExternal, IconRefresh, IconWarn } from "../components/icons.tsx";
-import { useSourceMutations, useSources } from "../lib/queries.ts";
+import { keys, useSourceMutations, useSources } from "../lib/queries.ts";
 import { formatDateTime, formatInterval, relativeTime } from "../lib/format.ts";
+import { nextCheck, nextCheckText } from "../lib/next-check.ts";
+import { useNow } from "../lib/use-now.ts";
 import { listToText, textToList } from "../lib/prefs-form.ts";
 
 type Health = "off" | "setup" | "failing" | "stale" | "good";
@@ -177,6 +180,30 @@ function ConfigEditor({
   );
 }
 
+/** The live half of a source row. Only this part re-renders on the second. */
+function NextCheckCell({ source }: { source: SourceStatus }) {
+  const qc = useQueryClient();
+  const ticking = source.enabled && !source.needsSetup && source.nextRunAt !== null;
+  const now = useNow(ticking);
+  const state = nextCheck(source, now);
+  const asked = useRef<string | null>(null);
+
+  // The run this was counting down to has started, so the planned time on screen is spent.
+  // Ask once per planned time, or a server that has not moved on yet would be asked every second.
+  useEffect(() => {
+    if (state.kind !== "due" || asked.current === source.nextRunAt) return;
+    asked.current = source.nextRunAt;
+    void qc.invalidateQueries({ queryKey: keys.sources });
+  }, [state.kind, source.nextRunAt, qc]);
+
+  return (
+    <div>
+      <dt className="text-ink-3">Next check</dt>
+      <dd data-testid={`next-check-${source.id}`}>{nextCheckText(state)}</dd>
+    </div>
+  );
+}
+
 function SourceRow({ source }: { source: SourceStatus }) {
   const { patch, run } = useSourceMutations();
   const [open, setOpen] = useState(false);
@@ -207,7 +234,8 @@ function SourceRow({ source }: { source: SourceStatus }) {
             </a>
           </div>
 
-          <dl className="num mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 text-[12.5px] sm:grid-cols-4">
+          <dl className="num mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 text-[12.5px] sm:grid-cols-5">
+            <NextCheckCell source={source} />
             <div>
               <dt className="text-ink-3">Last run</dt>
               <dd>{source.lastRunAt ? relativeTime(source.lastRunAt) : "never"}</dd>

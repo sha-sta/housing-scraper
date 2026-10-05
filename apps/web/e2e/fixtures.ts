@@ -651,6 +651,7 @@ export function makeSources(): SourceStatus[] {
       consecutiveFailures: 0,
       lastRunCount: 12,
       totalListings: 418,
+      nextRunAt: iso(-9),
     }),
     SourceStatusSchema.parse({
       id: "redfin",
@@ -685,6 +686,7 @@ export function makeSources(): SourceStatus[] {
       consecutiveFailures: 0,
       lastRunCount: 4,
       totalListings: 131,
+      nextRunAt: iso(-4),
     }),
     SourceStatusSchema.parse({
       id: "rentcom",
@@ -702,6 +704,7 @@ export function makeSources(): SourceStatus[] {
       consecutiveFailures: 0,
       lastRunCount: 2,
       totalListings: 58,
+      nextRunAt: iso(-14),
     }),
     SourceStatusSchema.parse({
       id: "jhu-och",
@@ -719,6 +722,7 @@ export function makeSources(): SourceStatus[] {
       consecutiveFailures: 0,
       lastRunCount: 3,
       totalListings: 77,
+      nextRunAt: iso(-2),
     }),
     SourceStatusSchema.parse({
       id: "appfolio",

@@ -30,6 +30,46 @@ test.describe("sources", () => {
     await expect(facebook).toContainText("pnpm --filter @housing/server login:facebook");
   });
 
+  test("counts down to each source's next check", async ({ page }) => {
+    await mockApi(page, makeState());
+    await page.goto("/sources");
+
+    const craigslist = page.getByTestId("source-row").filter({ hasText: "Craigslist" });
+    await expect(craigslist).toContainText("Next check");
+
+    const cell = page.getByTestId("next-check-craigslist");
+    await expect(cell).toHaveText(/^in [89]m \d{1,2}s$/);
+    const first = await cell.textContent();
+    await expect(cell).not.toHaveText(first ?? "", { timeout: 5000 });
+
+    // Redfin is enabled and ready with no planned time, which is what a run in progress looks like.
+    await expect(page.getByTestId("next-check-redfin")).toHaveText("Running");
+    await expect(page.getByTestId("next-check-appfolio")).toHaveText("Needs setup");
+    await expect(page.getByTestId("next-check-facebook-marketplace")).toHaveText("Paused");
+  });
+
+  test("asks the server again when a countdown reaches zero", async ({ page }) => {
+    const state = makeState();
+    state.sources = state.sources.map((source) =>
+      source.id === "zumper"
+        ? { ...source, nextRunAt: new Date(Date.now() + 2500).toISOString() }
+        : source,
+    );
+
+    let calls = 0;
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname === "/api/sources") calls += 1;
+    });
+
+    await mockApi(page, state);
+    await page.goto("/sources");
+
+    const cell = page.getByTestId("next-check-zumper");
+    await expect(cell).toHaveText(/^in \ds$/);
+    await expect(cell).toHaveText("Running", { timeout: 10_000 });
+    await expect.poll(() => calls, { timeout: 10_000 }).toBeGreaterThan(1);
+  });
+
   test("runs a source now and updates its counters", async ({ page }) => {
     await mockApi(page, makeState());
     await page.goto("/sources");
