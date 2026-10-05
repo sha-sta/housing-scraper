@@ -48,6 +48,7 @@ let harness: Harness;
 let app: Hono;
 let webDir: string | null = null;
 let ranSources: string[] = [];
+let reruns = 0;
 
 const NO_TAILSCALE: NetworkDetector = { address: () => null, name: async () => null };
 const WITH_TAILSCALE: NetworkDetector = {
@@ -78,6 +79,9 @@ function buildApp(
       ranSources.push(sourceId);
     },
     nextRunAt: () => options.nextRunAt ?? null,
+    rerunIfAreaWidened: async () => {
+      reruns += 1;
+    },
     ntfyDailyBudget: options.ntfyDailyBudget ?? 200,
     dashboardPassword: options.password ?? null,
     llmConfigured: false,
@@ -94,6 +98,7 @@ function buildApp(
 beforeEach(() => {
   harness = createHarness();
   ranSources = [];
+  reruns = 0;
   app = buildApp();
 });
 
@@ -267,6 +272,23 @@ describe("profiles", () => {
     const removed = await app.request(`/api/profiles/${profile.id}`, { method: "DELETE" });
     expect(removed.status).toBe(204);
     expect((await (await app.request("/api/profiles")).json() as unknown[]).length).toBe(0);
+  });
+
+  it("asks the scheduler for a rerun after a create and after an edit", async () => {
+    const created = await app.request("/api/profiles", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify(profileWrite()),
+    });
+    const profile = ProfileSchema.parse(await created.json());
+    expect(reruns).toBe(1);
+
+    await app.request(`/api/profiles/${profile.id}`, {
+      method: "PUT",
+      headers: JSON_HEADERS,
+      body: JSON.stringify(profileWrite({ enabled: true })),
+    });
+    expect(reruns).toBe(2);
   });
 
   it("rejects a profile with no name", async () => {

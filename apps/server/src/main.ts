@@ -130,6 +130,7 @@ async function main(): Promise<void> {
     log,
     runSourceNow: (sourceId) => scheduler.runNow(sourceId),
     nextRunAt: (sourceId) => scheduler.nextRunAt(sourceId),
+    rerunIfAreaWidened: () => scheduler.rerunIfAreaWidened(),
     ntfyDailyBudget: env.ntfyDailyBudget,
     dashboardPassword: env.dashboardPassword,
     llmConfigured: env.anthropicApiKey !== null,

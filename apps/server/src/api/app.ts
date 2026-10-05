@@ -52,6 +52,8 @@ export interface AppDeps {
   runSourceNow(sourceId: string): Promise<void>;
   /** The scheduler's planned time for this source, or null when nothing is planned. */
   nextRunAt(sourceId: string): string | null;
+  /** Reruns the ready sources when the saved profiles widened the search area. */
+  rerunIfAreaWidened(): Promise<void>;
   /** NTFY_DAILY_BUDGET, the ceiling the stats screen shows the day's push count against. */
   ntfyDailyBudget: number;
   dashboardPassword: string | null;
@@ -138,6 +140,13 @@ export function createApp(deps: AppDeps): Hono {
     app.use("*", basicAuth({ username: "housing", password, verifyUser: (_user, given) => given === password }));
   }
 
+  /** The reruns outlive the request that triggered them, so a failure has nowhere else to land. */
+  function rerunInBackground(): Promise<void> {
+    return deps.rerunIfAreaWidened().catch((error: unknown) => {
+      log.warn("rerunning the sources after a profile change failed", { error: String(error) });
+    });
+  }
+
   const api = new Hono();
 
   api.get("/health", (c) => c.json({ ok: true, version: VERSION }));
@@ -195,6 +204,8 @@ export function createApp(deps: AppDeps): Hono {
     repos.profiles.insert(profile);
     // A new profile inherits the stored inventory as a baseline instead of pushing all of it.
     await deps.pipeline.evaluateAll(profile, "announce");
+    // A wider area means a fresh poll, which the response does not wait for.
+    void rerunInBackground();
     return c.json(profile, 201);
   });
 
@@ -209,6 +220,8 @@ export function createApp(deps: AppDeps): Hono {
     repos.profiles.update(updated);
     // An edit adopts whatever newly matches without a push, because the owner is already looking.
     await deps.pipeline.evaluateAll(updated, "silent");
+    // Covers a widened radius, a moved anchor, and a profile switched back on.
+    void rerunInBackground();
     return c.json(updated);
   });
 

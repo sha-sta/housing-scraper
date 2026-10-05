@@ -10,7 +10,7 @@ import type {
 import type { EventBus } from "./api/events.ts";
 import type { Repos } from "./db/repo/index.ts";
 import type { Logger } from "./log.ts";
-import { WALK_MPH } from "./match/geo.ts";
+import { haversineMiles, WALK_MPH } from "./match/geo.ts";
 import { DOWN_THRESHOLD, type HealthNotifier } from "./notify/health.ts";
 import type { Pipeline } from "./pipeline/run.ts";
 
@@ -21,6 +21,9 @@ const BACKOFF_CAP_MS = 60 * 60 * 1000;
 /** Headroom on the search radius, because a walk radius is not a driving radius. */
 const AREA_MARGIN = 1.25;
 const MILES_PER_DEGREE_LAT = 69;
+/** A center that moves less than this covers the same blocks, so it is not worth a rerun. */
+const AREA_MOVE_METERS = 200;
+const METERS_PER_MILE = 1609.344;
 
 interface Circle {
   lat: number;
@@ -98,6 +101,11 @@ export interface Scheduler {
   runNow(sourceId: string): Promise<void>;
   /** When the pending timer for this source is due. Null while it is disabled, unset up, or running. */
   nextRunAt(sourceId: string): string | null;
+  /**
+   * Runs every ready source again when the enabled profiles now cover more ground than the last
+   * run asked for. Resolves once those runs are done, so callers that must stay quick do not await it.
+   */
+  rerunIfAreaWidened(): Promise<void>;
 }
 
 export interface SchedulerOptions {
@@ -119,16 +127,24 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
   const inFlight = new Map<string, Promise<void>>();
   const aborts = new Map<string, AbortController>();
   let running = false;
+  /** The area the most recent run asked for, which is what a profile edit is compared against. */
+  let lastRunArea: SearchArea | null = null;
 
-  function buildContext(sourceId: string, config: Record<string, unknown>, signal: AbortSignal): SourceContext {
-    const profiles = repos.profiles.enabled();
+  function areaFor(profiles: Profile[]): SearchArea {
     const settings = repos.config.getSettings();
     const campus = getCampus(settings?.campusId ?? "homewood") ?? getCampus("homewood");
     if (campus === undefined) throw new Error("no campus preset is available");
+    return unionSearchArea(profiles, campus);
+  }
+
+  function buildContext(sourceId: string, config: Record<string, unknown>, signal: AbortSignal): SourceContext {
+    const profiles = repos.profiles.enabled();
+    const area = areaFor(profiles);
+    lastRunArea = area;
     const known = repos.listings.knownSourceListingIds(sourceId);
 
     return {
-      area: unionSearchArea(profiles, campus),
+      area,
       hints: searchHints(profiles),
       config,
       http: options.http,
@@ -239,6 +255,13 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
     return promise;
   }
 
+  /** Drops the pending timer and runs the source now. Reused by the API and by a widened area. */
+  function runNow(sourceId: string): Promise<void> {
+    const timer = timers.get(sourceId);
+    if (timer !== undefined) clearTimeout(timer);
+    return runOnce(sourceId);
+  }
+
   return {
     start() {
       if (running) return;
@@ -265,10 +288,30 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
       await Promise.allSettled([...inFlight.values()]);
     },
 
-    runNow(sourceId) {
-      const timer = timers.get(sourceId);
-      if (timer !== undefined) clearTimeout(timer);
-      return runOnce(sourceId);
+    runNow,
+
+    async rerunIfAreaWidened() {
+      const previous = lastRunArea;
+      // Nothing has run yet, so the first run of every source will already use the new area.
+      if (previous === null) return;
+
+      const next = areaFor(repos.profiles.enabled());
+      const movedMeters = haversineMiles(previous.center, next.center) * METERS_PER_MILE;
+      if (next.radiusMiles <= previous.radiusMiles && movedMeters <= AREA_MOVE_METERS) return;
+
+      log.info("search area widened, rerunning the ready sources", {
+        oldRadiusMiles: Number(previous.radiusMiles.toFixed(2)),
+        newRadiusMiles: Number(next.radiusMiles.toFixed(2)),
+        centerMovedMeters: Math.round(movedMeters),
+      });
+      // Claimed before the runs start, so two edits in a row do not each rerun everything.
+      lastRunArea = next;
+
+      for (const source of repos.config.listSources()) {
+        if (!source.enabled || source.needsSetup) continue;
+        // runNow joins a run already in flight rather than starting a second one.
+        await runNow(source.id);
+      }
     },
 
     nextRunAt(sourceId) {
