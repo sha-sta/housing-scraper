@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import type { SourceAdapter } from "@housing/sources";
 import { createApp } from "./api/app.ts";
 import { createEventBus } from "./api/events.ts";
+import { createBackups } from "./backup.ts";
 import { openDb } from "./db/client.ts";
 import { createRepos } from "./db/repo/index.ts";
 import { demoAdapters } from "./demo/source.ts";
@@ -96,6 +97,8 @@ async function main(): Promise<void> {
   const repaired = repairListings(repos, (id) => peerPostedIds.has(id));
   if (repaired > 0) log.info("recomputed stored listings", { listings: repaired });
 
+  const backups = createBackups({ db: handle.db, dataDir: env.dataDir, log, demo: env.demo });
+
   const scheduler = createScheduler({
     adapters,
     repos,
@@ -185,6 +188,7 @@ async function main(): Promise<void> {
 
   scheduler.start();
   commands.start();
+  backups.start();
 
   let shuttingDown = false;
   const shutdown = async (signal: string): Promise<void> => {
@@ -193,6 +197,7 @@ async function main(): Promise<void> {
     log.info("shutting down", { signal });
     clearInterval(digestTimer);
     clearInterval(tailscaleTimer);
+    backups.stop();
     commands.stop();
     await scheduler.stop();
     await browser.close();
