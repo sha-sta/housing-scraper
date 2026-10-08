@@ -4,6 +4,17 @@ import { makeState, mockApi } from "./fixtures.ts";
 /** On desktop the feed stays mounted behind the drawer, so assertions scope to the detail. */
 const detail = (page: Page) => page.getByTestId("listing-detail");
 
+/** Which maps app a link opens depends on the device, so the tests name one. */
+async function pretendPlatform(page: Page, platform: string, userAgent: string) {
+  await page.addInitScript(
+    ({ platform: value, userAgent: agent }: { platform: string; userAgent: string }) => {
+      Object.defineProperty(navigator, "platform", { get: () => value, configurable: true });
+      Object.defineProperty(navigator, "userAgent", { get: () => agent, configurable: true });
+    },
+    { platform, userAgent },
+  );
+}
+
 test.describe("listing detail and outreach", () => {
   test("opens from the feed and shows why it scored", async ({ page }) => {
     await mockApi(page, makeState());
@@ -29,6 +40,52 @@ test.describe("listing detail and outreach", () => {
       "mailto:leasing@calvertrow.test",
     );
     await expect(view.getByText("Down $200 since")).toBeVisible();
+  });
+
+  test("copies the address", async ({ page }) => {
+    await mockApi(page, makeState());
+    await page.goto("/listings/lst_calvert");
+
+    const copy = detail(page).getByTestId("copy-address");
+    await copy.click();
+    await expect(copy).toHaveText("Copied");
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("2914 N Calvert St");
+  });
+
+  test("walks you there in Apple Maps on an Apple device", async ({ page }) => {
+    await mockApi(page, makeState());
+    await pretendPlatform(page, "MacIntel", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
+    await page.goto("/listings/lst_calvert");
+
+    await expect(detail(page).getByTestId("walking-directions")).toHaveAttribute(
+      "href",
+      "https://maps.apple.com/?saddr=39.3299,-76.6205&daddr=39.3252,-76.6156&dirflg=w",
+    );
+  });
+
+  test("walks you there in Google Maps everywhere else", async ({ page }) => {
+    await mockApi(page, makeState());
+    await pretendPlatform(page, "Win32", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+    await page.goto("/listings/lst_calvert");
+
+    await expect(detail(page).getByTestId("walking-directions")).toHaveAttribute(
+      "href",
+      "https://www.google.com/maps/dir/?api=1&origin=39.3299,-76.6205&destination=39.3252,-76.6156&travelmode=walking",
+    );
+  });
+
+  test("offers no directions to a listing nobody could place", async ({ page }) => {
+    const state = makeState();
+    state.listings = state.listings.map((view) =>
+      view.listing.id === "lst_remington"
+        ? { ...view, listing: { ...view.listing, lat: null, lon: null } }
+        : view,
+    );
+    await mockApi(page, state);
+    await page.goto("/listings/lst_remington");
+
+    await expect(detail(page).getByTestId("copy-address")).toBeVisible();
+    await expect(detail(page).getByTestId("walking-directions")).toHaveCount(0);
   });
 
   test("deep links straight to a listing, the way an ntfy push does", async ({ page }) => {

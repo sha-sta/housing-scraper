@@ -29,8 +29,11 @@ import {
   sourceLabel,
   telHref,
 } from "../lib/format.ts";
+import { useCopy } from "../lib/clipboard.ts";
+import { thisPlatform, walkingDirectionsUrl } from "../lib/directions.ts";
 import { rejectReason } from "../lib/reasons.ts";
 import { stageColor, stageLabel } from "../lib/stage.ts";
+import { useToast } from "../lib/toast.tsx";
 import { GONE_TITLE, pickMatch } from "./ListingRow.tsx";
 import { DraftPanel } from "./DraftPanel.tsx";
 import { Chip, Meter, ScorePlate } from "./ui.tsx";
@@ -150,6 +153,26 @@ export function ListingDetail({
   const [notes, setNotes] = useState(state.notes);
   useEffect(() => setNotes(state.notes), [state.notes]);
 
+  const toast = useToast();
+  const { copied, copy } = useCopy();
+  const address = listing.address ?? listing.title;
+  const anchor = profiles.find((p) => p.id === profileId)?.preferences.location.anchor ?? null;
+  const directions =
+    anchor === null || listing.lat === null || listing.lon === null
+      ? null
+      : walkingDirectionsUrl(anchor, { lat: listing.lat, lon: listing.lon }, thisPlatform());
+
+  function copyAddress(): void {
+    void copy("address", address).then((ok) => {
+      if (ok) return;
+      toast.push({
+        title: "Could not copy",
+        body: "Select the address and copy it by hand",
+        tone: "bad",
+      });
+    });
+  }
+
   const presentAmenities = AMENITIES.filter((amenity) => listing.amenities[amenity] === true);
   const facts: { label: string; value: string }[] = [];
   const missing: string[] = [];
@@ -213,7 +236,17 @@ export function ListingDetail({
           </div>
         </div>
 
-        <h2 className="semi mt-3 text-[17px] leading-snug">{listing.address ?? listing.title}</h2>
+        <div className="mt-3 flex items-start gap-1">
+          <h2 className="semi min-w-0 flex-1 text-[17px] leading-snug">{address}</h2>
+          <button
+            type="button"
+            onClick={copyAddress}
+            className="med -mt-1.5 min-h-[44px] min-w-[44px] shrink-0 px-1.5 text-[12.5px] text-ink-2 hover:text-ink"
+            data-testid="copy-address"
+          >
+            {copied === "address" ? "Copied" : "Copy"}
+          </button>
+        </div>
         <p className="mt-1 text-[13px] text-ink-2">
           {listing.neighborhood ? `${listing.neighborhood}. ` : ""}
           {formatWalk(match?.walkMinutes ?? null)}
@@ -284,6 +317,18 @@ export function ListingDetail({
             {state.hidden ? <IconShow className="h-4 w-4" /> : <IconHide className="h-4 w-4" />}
             {state.hidden ? "Unhide" : "Hide"}
           </button>
+          {directions ? (
+            <a
+              className="ctl med flex items-center gap-1.5 text-[13.5px]"
+              href={directions}
+              target="_blank"
+              rel="noreferrer noopener"
+              data-testid="walking-directions"
+            >
+              <IconExternal className="h-4 w-4" />
+              Walking directions
+            </a>
+          ) : null}
         </div>
       </div>
 
