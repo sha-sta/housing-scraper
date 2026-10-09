@@ -15,6 +15,7 @@ import { createCommandListener } from "./notify/commands.ts";
 import { createHealthNotifier } from "./notify/health.ts";
 import { createNotifier } from "./notify/notifier.ts";
 import { createNtfyClient } from "./notify/ntfy.ts";
+import { createPhotoChecker } from "./notify/photos.ts";
 import type { PushContext } from "./notify/push.ts";
 import { createDraftService } from "./outreach/drafts.ts";
 import { createPersonalizer } from "./outreach/llm.ts";
@@ -87,6 +88,7 @@ async function main(): Promise<void> {
     drafts,
     geocoder: createGeocoder(repos.config, log),
     router: createRouter(repos.config, log, env.valhallaUrl),
+    photos: createPhotoChecker({ log }),
     log,
     pushContext,
     peerPosted: (sourceId) => peerPostedIds.has(sourceId),

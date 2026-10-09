@@ -235,11 +235,10 @@ describe("push composition", () => {
     expect(normal.priority).toBe(4);
   });
 
-  it("attaches the first photo and taps through somewhere a phone can open", () => {
+  it("taps through somewhere a phone can open", () => {
     // The fixture dashboard is localhost, which a phone cannot reach, so the source page wins.
     const push = buildMatchPush(listing, match, profile, null, context);
     expect(push.click).toBe("https://example.com/unit-1");
-    expect(push.attach).toBe("https://example.com/photo.jpg");
 
     const reachable = { ...context, dashboardUrl: "http://macbook.tail1234.ts.net:4747" };
     expect(buildMatchPush(listing, match, profile, null, reachable).click).toBe(

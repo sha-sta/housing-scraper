@@ -6,6 +6,7 @@ import { newId } from "../src/ids.ts";
 import { silentLogger } from "../src/log.ts";
 import { createNotifier, type Notifier } from "../src/notify/notifier.ts";
 import type { NtfyMessage } from "../src/notify/ntfy.ts";
+import type { PhotoChecker } from "../src/notify/photos.ts";
 import type { PushContext } from "../src/notify/push.ts";
 import { createDraftService, type DraftService } from "../src/outreach/drafts.ts";
 import { createJsonMailer, createMailer, type Mailer } from "../src/outreach/mailer.ts";
@@ -37,6 +38,8 @@ export interface HarnessOptions {
   dailyBudget?: number;
   /** Source ids to treat as open boards. Defaults to the fixture sources used across the suite. */
   peerPostedSources?: string[];
+  /** Defaults to one that attaches the first photo without asking its host. */
+  photos?: PhotoChecker;
 }
 
 export function createHarness(options: HarnessOptions = {}): Harness {
@@ -94,6 +97,7 @@ export function createHarness(options: HarnessOptions = {}): Harness {
     drafts,
     geocoder: { lookup: async () => null },
     router: { walkMinutes: async () => null },
+    photos: options.photos ?? { pick: async (photos) => photos[0] ?? null },
     log: silentLogger(),
     pushContext,
     peerPosted: (sourceId) => peerPostedIds.has(sourceId),

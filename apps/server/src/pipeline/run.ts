@@ -8,6 +8,7 @@ import { evaluate, wholeUnitRent } from "../match/evaluate.ts";
 import { reevaluateProfile } from "../match/reevaluate.ts";
 import type { Router } from "../match/routing.ts";
 import type { Notifier } from "../notify/notifier.ts";
+import type { PhotoChecker } from "../notify/photos.ts";
 import { buildMatchPush, dashboardClick, listingClick, type PushContext } from "../notify/push.ts";
 import type { DraftService } from "../outreach/drafts.ts";
 import { findDuplicate, type DedupeCandidate } from "./dedupe.ts";
@@ -50,6 +51,8 @@ export interface PipelineOptions {
   drafts: DraftService;
   geocoder: Geocoder;
   router: Router;
+  /** Decides which photo, if any, a push can attach. */
+  photos: PhotoChecker;
   log: Logger;
   pushContext(): PushContext;
   /** True for sources where anyone can post. Only those get the comparison scam signals. */
@@ -110,7 +113,7 @@ export function createPipeline(options: PipelineOptions): Pipeline {
       title: push.title,
       body: push.body,
       click: push.click ?? null,
-      attach: push.attach ?? null,
+      attach: await options.photos.pick(listing.photos),
       priority: push.priority,
       tags: push.tags,
       actions: push.actions,
@@ -144,7 +147,7 @@ export function createPipeline(options: PipelineOptions): Pipeline {
       title,
       body,
       click: listingClick(context, listing) ?? null,
-      attach: listing.photos[0] ?? null,
+      attach: await options.photos.pick(listing.photos),
       priority: 4,
       tags: [kind === "priceDrop" ? "chart_with_downwards_trend" : "recycle"],
       actions: [{ action: "view", label: "Open listing", url: listing.sources[0]?.url ?? context.dashboardUrl }],

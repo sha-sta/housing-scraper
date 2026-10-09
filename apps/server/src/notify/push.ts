@@ -155,11 +155,11 @@ function outreachActions(draft: Draft, context: PushContext): NtfyAction[] {
   return [];
 }
 
+/** No attachment here: a photo has to be checked over the network, so the caller supplies it. */
 export interface MatchPush {
   title: string;
   body: string;
   click: string | undefined;
-  attach: string | undefined;
   priority: number;
   tags: string[];
   /** Owner topic only. */
@@ -186,7 +186,6 @@ export function buildMatchPush(
     title: matchTitle(listing),
     body: matchBody(listing, match),
     click: listingClick(context, listing),
-    attach: listing.photos[0],
     priority: match.score >= profile.preferences.notify.urgentScore ? 5 : 4,
     tags: ["house"],
     actions,
