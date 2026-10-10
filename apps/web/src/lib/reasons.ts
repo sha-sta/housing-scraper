@@ -1,4 +1,5 @@
-import type { FilterReason } from "@housing/shared";
+import type { FilterReason, Preferences } from "@housing/shared";
+import { formatMoney, pluralize } from "./format.ts";
 
 /**
  * Plain words for every hard filter. A student reading the "show everything scraped"
@@ -87,4 +88,114 @@ const SECTIONS: Record<FilterReason, string> = {
 
 export function reasonSection(reason: FilterReason): string {
   return SECTIONS[reason];
+}
+
+/**
+ * One concrete loosening for a reason, in the words the profile editor uses for that
+ * setting. Numbers move by one ordinary step so the suggestion is something to tap in,
+ * not an instruction to go think about it.
+ */
+export function loosenSuggestion(reason: FilterReason, prefs: Preferences): string {
+  switch (reason) {
+    case "priceOverMax": {
+      if (prefs.price.maxPerPerson !== null) {
+        return `Try ${formatMoney(prefs.price.maxPerPerson + 100)} each.`;
+      }
+      if (prefs.price.maxTotal !== null) {
+        return `Try ${formatMoney(prefs.price.maxTotal + 500)} in total.`;
+      }
+      return "Try raising your budget.";
+    }
+    case "priceUnknown":
+      return "Try keeping listings with no price.";
+    case "bedsOutOfRange": {
+      if (prefs.beds.min > 0) {
+        return `Try ${pluralize(prefs.beds.min - 1, "bedroom", "bedrooms")} as the minimum.`;
+      }
+      if (prefs.beds.max !== null) {
+        return `Try ${pluralize(prefs.beds.max + 1, "bedroom", "bedrooms")} as the maximum.`;
+      }
+      return "Try widening the bedroom range.";
+    }
+    case "bedsUnknown":
+      return "Try keeping listings with no bedroom count.";
+    case "bathsUnderMin": {
+      const next = Math.max(0, prefs.baths.min - 0.5);
+      return `Try ${pluralize(next, "bathroom", "bathrooms")} as the minimum.`;
+    }
+    case "sqftUnderMin": {
+      if (prefs.sqft.min !== null && prefs.sqft.min > 200) {
+        return `Try ${prefs.sqft.min - 200} square feet as the minimum.`;
+      }
+      return "Try dropping the square footage minimum.";
+    }
+    case "propertyTypeNotAllowed":
+      return "Try adding another property type.";
+    case "tooFar": {
+      if (prefs.location.maxWalkMinutes !== null) {
+        return `Try ${prefs.location.maxWalkMinutes + 5} minutes.`;
+      }
+      return "Try raising your walk limit.";
+    }
+    case "locationUnknown":
+      return "Try keeping listings that could not be placed on the map.";
+    case "neighborhoodExcluded":
+      return "Try taking a neighborhood off your never list.";
+    case "neighborhoodNotIncluded":
+      return "Try clearing your neighborhood list.";
+    case "availabilityOutsideWindow":
+      return "Try widening your move-in window.";
+    case "availabilityUnknown":
+      return "Try keeping listings with no move-in date.";
+    case "leaseLengthOutOfRange":
+      return "Try widening your lease length range.";
+    case "missingRequiredAmenity":
+      return "Try moving one must amenity to prefer.";
+    case "subletNotAllowed":
+      return "Try allowing sublets.";
+    case "sharedRoomNotAllowed":
+      return "Try allowing a room in a shared unit.";
+    case "incomeRestricted":
+      return "Try allowing income restricted housing.";
+    case "seniorHousing":
+      return "Try allowing senior housing.";
+    case "suspectedScam":
+      return "Try showing suspected scams with their warning.";
+    case "noPhotos":
+      return "Try turning off the photo requirement.";
+    case "listingTooOld": {
+      if (prefs.rules.maxListingAgeDays !== null) {
+        return `Try ${pluralize(prefs.rules.maxListingAgeDays * 2, "day", "days")} as the age limit.`;
+      }
+      return "Try dropping the age limit.";
+    }
+    case "excludedBuilding":
+      return "Try taking a building off your exclude list.";
+    case "excludedAddress":
+      return "Try taking an address off your exclude list.";
+    case "excludedLandlord":
+      return "Try taking a landlord off your exclude list.";
+    case "excludedKeyword":
+      return "Try taking a word off your exclude list.";
+    case "excludedSource":
+      return "Try turning a source back on for this profile.";
+    case "missingRequiredKeyword":
+      return "Try removing a required word.";
+  }
+}
+
+/**
+ * The one thing worth loosening when a profile matches nothing. Only the top reason, so
+ * the reader has a single move to make rather than a list to work through.
+ */
+export function loosenHint(
+  topRejectReasons: readonly (readonly [FilterReason, number])[],
+  prefs: Preferences,
+): string | null {
+  const top = topRejectReasons[0];
+  if (!top) return null;
+  const [reason, count] = top;
+  if (count <= 0) return null;
+  const stopped = `${rejectReason(reason)} stopped ${pluralize(count, "listing", "listings")}.`;
+  return `${stopped} ${loosenSuggestion(reason, prefs)}`;
 }

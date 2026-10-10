@@ -8,9 +8,10 @@ import { Empty, ErrorNote, Spinner } from "../components/ui.tsx";
 import { IconSearch } from "../components/icons.tsx";
 import { newSinceIndex, useLastVisit } from "../lib/last-visit.ts";
 import { useLive } from "../lib/live.tsx";
-import { useListings, useListingState, useSources } from "../lib/queries.ts";
+import { useListings, useListingState, useProfilePreview, useSources } from "../lib/queries.ts";
 import { useSelection } from "../lib/selection.tsx";
 import { sourceLabel, pluralize } from "../lib/format.ts";
+import { loosenHint } from "../lib/reasons.ts";
 import { stageLabel } from "../lib/stage.ts";
 
 const SORTS: { value: ListingQuery["sort"]; label: string }[] = [
@@ -153,6 +154,15 @@ export function Feed() {
   }
 
   const filtered = Boolean(stage || starred || sourceId || text);
+
+  // Nothing for this profile, no filters in the way. The preview says what did the rejecting.
+  const nothingMatched =
+    !listings.isPending && items.length === 0 && scope === "matched" && !filtered;
+  const preview = useProfilePreview(profile, nothingMatched);
+  const loosen =
+    profile && preview.data && preview.data.total > 0
+      ? loosenHint(preview.data.topRejectReasons, profile.preferences)
+      : null;
 
   return (
     <div>
@@ -303,15 +313,27 @@ export function Feed() {
         ) : (
           <Empty
             title={`Nothing matches ${profile?.name ?? "this profile"} yet`}
-            next="Turn on Show everything scraped to see what was rejected and why, or loosen the profile."
+            next={
+              loosen ??
+              "Turn on Show everything scraped to see what was rejected and why, or loosen the profile."
+            }
             action={
-              <button
-                type="button"
-                className="ctl med text-[14px]"
-                onClick={() => update("scope", "all")}
-              >
-                Show everything scraped
-              </button>
+              loosen && profile ? (
+                <Link
+                  to={`/settings/profiles/${profile.id}`}
+                  className="ctl med flex items-center px-4 text-[14px]"
+                >
+                  Open the profile editor
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  className="ctl med text-[14px]"
+                  onClick={() => update("scope", "all")}
+                >
+                  Show everything scraped
+                </button>
+              )
             }
           />
         )

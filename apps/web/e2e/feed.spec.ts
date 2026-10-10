@@ -135,6 +135,37 @@ test.describe("feed", () => {
     await expect(page.getByTestId("listing-row")).toHaveCount(6);
   });
 
+  test("names the one limit to loosen when nothing matches", async ({ page }) => {
+    const state = makeState();
+    state.listings = state.listings.map((view) => ({
+      ...view,
+      matches: view.matches.map((match) =>
+        match.profileId === "prof_row6" ? { ...match, matched: false } : match,
+      ),
+    }));
+    await mockApi(page, state);
+    await page.goto("/");
+
+    await expect(page.getByTestId("listing-row")).toHaveCount(0);
+    await expect(page.getByText("Nothing matches Row home for 6 yet")).toBeVisible();
+    await expect(
+      page.getByText("Longer walk than your maximum stopped 2 listings. Try 20 minutes."),
+    ).toBeVisible();
+
+    await page.getByRole("link", { name: "Open the profile editor" }).click();
+    await expect(page).toHaveURL(/\/settings\/profiles\/prof_row6$/);
+  });
+
+  test("keeps the plain empty state when nothing has been scraped", async ({ page }) => {
+    const state = makeState();
+    state.listings = [];
+    await mockApi(page, state);
+    await page.goto("/");
+
+    await expect(page.getByText("Turn on Show everything scraped")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open the profile editor" })).toHaveCount(0);
+  });
+
   test("falls back when a photo host refuses the request", async ({ page }) => {
     await mockApi(page, makeState());
     // The JHU portal's photo host answers 403 to anything outside its own page.

@@ -42,6 +42,7 @@ export const keys = {
   notifications: ["notifications"] as const,
   notificationList: (unread?: boolean) => ["notifications", unread ?? false] as const,
   sources: ["sources"] as const,
+  preview: (profileId: string, updatedAt: string) => ["preview", profileId, updatedAt] as const,
 };
 
 export function useStats(): UseQueryResult<Stats> {
@@ -138,6 +139,30 @@ export function useDeleteProfile() {
 export function usePreviewProfile() {
   return useMutation<ProfilePreview, Error, ProfileWrite>({
     mutationFn: (write: ProfileWrite) => api.previewProfile(write),
+  });
+}
+
+/**
+ * The same count the editor shows, asked for a profile that is already saved. The feed
+ * uses it to explain an empty page, so it only runs when the page is actually empty.
+ */
+export function useProfilePreview(
+  profile: Profile | null,
+  enabled: boolean,
+): UseQueryResult<ProfilePreview> {
+  return useQuery({
+    queryKey: keys.preview(profile?.id ?? "", profile?.updatedAt ?? ""),
+    queryFn: () => {
+      if (profile === null) throw new Error("No profile to preview");
+      return api.previewProfile({
+        name: profile.name,
+        enabled: profile.enabled,
+        color: profile.color,
+        preferences: profile.preferences,
+      });
+    },
+    enabled: enabled && profile !== null,
+    staleTime: 60_000,
   });
 }
 
