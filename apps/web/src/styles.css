@@ -178,6 +178,12 @@
     border-top: 1px solid var(--rule);
   }
 
+  /* Where the keyboard is in the feed. It has to read as a position, not a selection. */
+  .row-cursor {
+    outline: 2px solid var(--moss);
+    outline-offset: -2px;
+  }
+
   .ctl {
     min-height: 44px;
     border: 1px solid var(--rule-strong);

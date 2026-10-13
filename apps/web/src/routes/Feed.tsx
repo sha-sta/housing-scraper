@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import type { ListingQuery, Stage } from "@housing/shared";
 import { STAGES } from "@housing/shared";
 import { ListingRow } from "../components/ListingRow.tsx";
 import { ScrollFade } from "../components/ScrollFade.tsx";
+import { ShortcutsSheet } from "../components/ShortcutsSheet.tsx";
 import { Empty, ErrorNote, Spinner } from "../components/ui.tsx";
 import { IconSearch } from "../components/icons.tsx";
 import { newSinceIndex, useLastVisit } from "../lib/last-visit.ts";
@@ -12,7 +13,9 @@ import { useListings, useListingState, useProfilePreview, useSources } from "../
 import { useSelection } from "../lib/selection.tsx";
 import { sourceLabel, pluralize } from "../lib/format.ts";
 import { loosenHint } from "../lib/reasons.ts";
+import { isTypingTarget, nextHighlight } from "../lib/shortcuts.ts";
 import { stageLabel } from "../lib/stage.ts";
+import { useIsDesktop } from "../lib/use-media.ts";
 
 const SORTS: { value: ListingQuery["sort"]; label: string }[] = [
   { value: "newest", label: "Newest" },
@@ -92,6 +95,12 @@ export function Feed() {
   const listingState = useListingState();
   const [limit, setLimit] = useState(50);
   const topRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const isDesktop = useIsDesktop();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [cursor, setCursor] = useState<number | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const scope = params.get("scope") === "all" ? "all" : "matched";
   const sortParam = params.get("sort");
@@ -142,6 +151,73 @@ export function Feed() {
   const arrivalSet = useMemo(() => new Set(arrivals), [arrivals]);
   const unseen = arrivals.filter((id) => items.some((item) => item.listing.id === id)).length;
   const dividerAt = newSinceIndex(items, since, arrivalSet);
+
+  // The drawer sits over the feed on a wide screen, and it owns the keyboard while it is open.
+  const drawerOpen = location.pathname.startsWith("/listings/");
+
+  useEffect(() => {
+    setCursor((current) =>
+      current === null || items.length === 0 ? null : Math.min(current, items.length - 1),
+    );
+  }, [items.length]);
+
+  useEffect(() => {
+    if (cursor === null) return;
+    const rows = listRef.current?.querySelectorAll<HTMLElement>('[data-testid="listing-row"]');
+    const row = rows?.[cursor];
+    if (!row) return;
+    row.focus({ preventScroll: true });
+    row.scrollIntoView({ block: "nearest" });
+  }, [cursor]);
+
+  useEffect(() => {
+    if (!isDesktop) return;
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isTypingTarget(event.target)) return;
+
+      if (event.key === "Escape") {
+        // The drawer closes itself. Escape only lands here while the sheet is up.
+        if (sheetOpen) setSheetOpen(false);
+        return;
+      }
+      if (event.key === "?") {
+        event.preventDefault();
+        setSheetOpen((open) => !open);
+        return;
+      }
+      if (sheetOpen || drawerOpen) return;
+
+      const move = event.key === "j" ? 1 : event.key === "k" ? -1 : 0;
+      if (move !== 0) {
+        event.preventDefault();
+        setCursor((current) => nextHighlight(current, move, items.length));
+        return;
+      }
+
+      const view = cursor === null ? undefined : items[cursor];
+      if (!view) return;
+
+      if (event.key === "Enter" || event.key === "o") {
+        event.preventDefault();
+        void navigate(`/listings/${view.listing.id}`);
+        return;
+      }
+      if (event.key === "s") {
+        event.preventDefault();
+        listingState.mutate({ id: view.listing.id, patch: { starred: !view.state.starred } });
+        return;
+      }
+      if (event.key === "h") {
+        event.preventDefault();
+        listingState.mutate({ id: view.listing.id, patch: { hidden: !view.state.hidden } });
+      }
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isDesktop, sheetOpen, drawerOpen, items, cursor, navigate, listingState]);
 
   function update(key: string, value: string | null) {
     setParams((previous) => {
@@ -339,7 +415,7 @@ export function Feed() {
         )
       ) : null}
 
-      <div className="row-stack border-t border-rule">
+      <div className="row-stack border-t border-rule" ref={listRef}>
         {items.map((view, index) => (
           <Fragment key={view.listing.id}>
             {index === dividerAt ? <NewSinceDivider /> : null}
@@ -348,6 +424,7 @@ export function Feed() {
               profile={profile}
               profileId={profileId}
               arrived={arrivalSet.has(view.listing.id)}
+              highlighted={index === cursor}
               showRestrictions={scope === "all"}
               onStar={(value) =>
                 listingState.mutate({ id: view.listing.id, patch: { starred: value } })
@@ -371,6 +448,8 @@ export function Feed() {
           </button>
         </div>
       ) : null}
+
+      {sheetOpen ? <ShortcutsSheet onClose={() => setSheetOpen(false)} /> : null}
     </div>
   );
 }

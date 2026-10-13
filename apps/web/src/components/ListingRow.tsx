@@ -34,6 +34,7 @@ export function ListingRow({
   profile,
   profileId,
   arrived,
+  highlighted = false,
   showRestrictions,
   onStar,
   onHide,
@@ -42,6 +43,8 @@ export function ListingRow({
   profile: Profile | null;
   profileId: string | null;
   arrived: boolean;
+  /** Where the keyboard is, on a desktop screen. */
+  highlighted?: boolean;
   showRestrictions: boolean;
   onStar: (starred: boolean) => void;
   onHide: (hidden: boolean) => void;
@@ -61,9 +64,11 @@ export function ListingRow({
 
   return (
     <article
-      className={`relative bg-surface ${arrived ? "arrived" : ""}`}
+      className={`relative bg-surface ${arrived ? "arrived" : ""} ${highlighted ? "row-cursor" : ""}`}
+      tabIndex={-1}
       data-testid="listing-row"
       data-listing-id={listing.id}
+      data-highlighted={highlighted ? "true" : "false"}
     >
       <span
         aria-hidden="true"
