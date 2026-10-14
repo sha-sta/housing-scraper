@@ -113,7 +113,7 @@ The app only checks sites while it is running.
 The one-line installer already set this up. From a clone on a Mac, install it as a background service that starts at login and restarts if it stops.
 
 ```sh
-scripts/service.sh install     # also: uninstall, status, logs
+scripts/service.sh install     # also: restart, uninstall, status, logs
 ```
 
 The service keeps the Mac from sleeping when idle. A laptop with the lid closed still sleeps, so leave the lid open or run the app on a machine that stays on.

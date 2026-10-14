@@ -9,7 +9,7 @@ PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG_DIR="$REPO/data/logs"
 
 usage() {
-  echo "usage: scripts/service.sh install | uninstall | status | logs"
+  echo "usage: scripts/service.sh install | restart | uninstall | status | logs"
   exit 1
 }
 
@@ -55,8 +55,13 @@ uninstall() {
   echo "Removed."
 }
 
+restart() {
+  launchctl kickstart -k "gui/$(id -u)/$LABEL" && echo "Restarted." || echo "Not installed. Run: scripts/service.sh install"
+}
+
 case "${1:-}" in
   install) install ;;
+  restart) restart ;;
   uninstall) uninstall ;;
   status) launchctl print "gui/$(id -u)/$LABEL" | grep -E "state|pid|last exit" || echo "not installed" ;;
   logs) tail -f "$LOG_DIR/server.log" ;;
