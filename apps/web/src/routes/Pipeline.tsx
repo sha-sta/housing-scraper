@@ -5,7 +5,9 @@ import { STAGES, type ListingView, type Stage } from "@housing/shared";
 import { ProfileSwitcher } from "./Feed.tsx";
 import { pickMatch } from "../components/ListingRow.tsx";
 import { ScorePlate } from "../components/ui.tsx";
+import { IconChevron } from "../components/icons.tsx";
 import { api } from "../lib/api.ts";
+import { readPassedOpen, writePassedOpen } from "../lib/passed-column.ts";
 import { keys, useListingState } from "../lib/queries.ts";
 import { useSelection } from "../lib/selection.tsx";
 import { useIsDesktop } from "../lib/use-media.ts";
@@ -88,6 +90,12 @@ export function Pipeline() {
   const listingState = useListingState();
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<Stage | null>(null);
+  const [passedOpen, setPassedOpen] = useState(readPassedOpen);
+
+  function showPassed(open: boolean) {
+    setPassedOpen(open);
+    writePassedOpen(open);
+  }
 
   const columns = useQueries({
     queries: STAGES.map((stage) => {
@@ -133,6 +141,19 @@ export function Pipeline() {
         {STAGES.map((stage, index) => {
           const items = columns[index] ?? [];
           const isOver = over === stage;
+          const folded = stage === "passed" && !passedOpen;
+          const dot = (
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ background: stageColor(stage) }}
+            />
+          );
+          const count = (
+            <span className="num text-[12px] text-ink-2" data-testid={`stage-count-${stage}`}>
+              {items.length}
+            </span>
+          );
           return (
             <section
               key={stage}
@@ -150,36 +171,71 @@ export function Pipeline() {
                 setDragging(null);
                 if (id) move(id, stage);
               }}
-              className={`flex w-[78vw] shrink-0 snap-start flex-col rounded-[10px] border p-2.5 sm:w-[268px] ${
-                isOver ? "border-moss bg-moss-soft" : "border-rule bg-surface-2"
-              }`}
+              className={`flex shrink-0 snap-start flex-col rounded-[10px] border ${
+                folded ? "w-[52px] p-1.5" : "w-[78vw] p-2.5 sm:w-[268px]"
+              } ${isOver ? "border-moss bg-moss-soft" : "border-rule bg-surface-2"}`}
               data-testid={`stage-column-${stage}`}
+              data-folded={folded ? "true" : "false"}
               aria-label={stageLabel(stage)}
             >
-              <h2 className="med flex items-center gap-2 px-1 pb-2 text-[13.5px]">
-                <span
-                  aria-hidden="true"
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: stageColor(stage) }}
-                />
-                {stageLabel(stage)}
-                <span className="num ml-auto text-[12px] text-ink-2">{items.length}</span>
-              </h2>
-              <div className="flex flex-col gap-2">
-                {items.map((view) => (
-                  <Card
-                    key={view.listing.id}
-                    view={view}
-                    profileId={profileId}
-                    draggable={isDesktop}
-                    onStage={(next) => move(view.listing.id, next)}
-                    onDragStart={() => setDragging(view.listing.id)}
-                  />
-                ))}
-                {items.length === 0 ? (
-                  <p className="px-1 py-3 text-[12.5px] text-ink-3">{stageHint(stage)}</p>
-                ) : null}
-              </div>
+              {folded ? (
+                <h2>
+                  <button
+                    type="button"
+                    onClick={() => showPassed(true)}
+                    aria-expanded={false}
+                    className="med flex min-h-[120px] w-full flex-1 flex-col items-center gap-2 py-2 text-[12.5px] text-ink-2"
+                  >
+                    {dot}
+                    {count}
+                    <span style={{ writingMode: "vertical-rl" }}>{stageLabel(stage)}</span>
+                  </button>
+                </h2>
+              ) : (
+                <>
+                  <h2 className="med px-1 pb-2 text-[13.5px]">
+                    {stage === "passed" ? (
+                      <button
+                        type="button"
+                        onClick={() => showPassed(false)}
+                        aria-expanded={true}
+                        className="flex min-h-[44px] w-full items-center gap-2"
+                      >
+                        {dot}
+                        {stageLabel(stage)}
+                        <span className="ml-auto flex items-center gap-1">
+                          {count}
+                          <IconChevron
+                            className="h-4 w-4 rotate-90 text-ink-2"
+                            aria-hidden="true"
+                          />
+                        </span>
+                      </button>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        {dot}
+                        {stageLabel(stage)}
+                        <span className="ml-auto">{count}</span>
+                      </span>
+                    )}
+                  </h2>
+                  <div className="flex flex-col gap-2">
+                    {items.map((view) => (
+                      <Card
+                        key={view.listing.id}
+                        view={view}
+                        profileId={profileId}
+                        draggable={isDesktop}
+                        onStage={(next) => move(view.listing.id, next)}
+                        onDragStart={() => setDragging(view.listing.id)}
+                      />
+                    ))}
+                    {items.length === 0 ? (
+                      <p className="px-1 py-3 text-[12.5px] text-ink-3">{stageHint(stage)}</p>
+                    ) : null}
+                  </div>
+                </>
+              )}
             </section>
           );
         })}
